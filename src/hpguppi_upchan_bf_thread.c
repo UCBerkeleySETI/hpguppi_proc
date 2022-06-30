@@ -645,10 +645,12 @@ static void *run(hashpipe_thread_args_t * args)
 
         // Get basefilename with no source name using SRC_NAME from GUPPI RAW file
         char_offset = strstr(raw_basefilename, src_name);
+        // Subtract pointer of source name position from that of the RAW basefilename to get the correct number of bytes to copy
         src_name_pos = char_offset-raw_basefilename;
 
         // Copy raw basefilename with no source name
         memcpy(base_no_src, &raw_basefilename[0], src_name_pos);
+        // Place null terminator at the source name position right after the underscore
         base_no_src[src_name_pos] = '\0';
       }
 
