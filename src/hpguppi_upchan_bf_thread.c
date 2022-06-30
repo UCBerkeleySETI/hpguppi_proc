@@ -139,10 +139,8 @@ static void *run(hashpipe_thread_args_t * args)
   char src_name[200];
   uint64_t stt_imjd = 0;
   uint64_t stt_smjd = 0;
-  char character = '_';
   char *char_offset;
-  long int last_underscore_pos;
-  char base_src[200];
+  long int src_name_pos;
   char base_no_src[200];
   char raw_basefilename[200];
   char raw_filename[200];
@@ -645,23 +643,13 @@ static void *run(hashpipe_thread_args_t * args)
         tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams,(int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
         memcpy(bf_coefficients, tmp_coefficients, N_COEFF*sizeof(float));
 
-        // Get basefilename with no source name
-        // strrchr() finds the last occurence of the specified character
-        char_offset = strrchr(raw_basefilename, character);
-        last_underscore_pos = char_offset-raw_basefilename;
+        // Get basefilename with no source name using SRC_NAME from GUPPI RAW file
+        char_offset = strstr(raw_basefilename, src_name);
+        src_name_pos = char_offset-raw_basefilename;
 
-        // Get file name with source name
-        memcpy(base_src, &raw_basefilename[0], last_underscore_pos);
-        base_src[last_underscore_pos] = '\0';
-
-        // Get basefilename with source name
-        // strrchr() finds the last occurence of the specified character
-        char_offset = strrchr(base_src, character);
-        last_underscore_pos = char_offset-base_src;
-
-        // Get file name with no source name
-        memcpy(base_no_src, &base_src[0], last_underscore_pos+1);
-        base_no_src[last_underscore_pos+1] = '\0';
+        // Copy raw basefilename with no source name
+        memcpy(base_no_src, &raw_basefilename[0], src_name_pos);
+        base_no_src[src_name_pos] = '\0';
       }
 
       if(sim_flag == 1){
@@ -745,8 +733,8 @@ static void *run(hashpipe_thread_args_t * args)
       for(int b = 0; b < nbeams; b++){
         fb_hdr.ibeam =  b;
         if(sim_flag == 0){
-          fb_hdr.src_raj = ra_data[b];
-          fb_hdr.src_dej = dec_data[b];
+          fb_hdr.src_raj = ra_data[b]*12/PI;
+          fb_hdr.src_dej = dec_data[b]*180/PI;
           strncpy(fb_hdr.source_name, (char *)src_names_str[b].p, src_names_str[b].len);
           fb_hdr.source_name[src_names_str[b].len] = '\0';
         }
