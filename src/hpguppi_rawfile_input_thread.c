@@ -186,7 +186,7 @@ static int get_piperblk(char * header_buf, size_t len)
     printf("RAW INPUT: obsnchan %d\n", obsnchan);
     printf("RAW INPUT: npol %d\n", npol);
     printf("RAW INPUT: nbits %d\n", nbits);
-    return block_size/(obsnchan * npol * 2 * nbits);
+    return block_size/((obsnchan * npol * 2 * nbits)/8);
 }
 
 static void set_output_path(char * header_buf, char * outdir, size_t len)
