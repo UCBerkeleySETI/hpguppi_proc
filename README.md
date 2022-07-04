@@ -10,30 +10,26 @@ There are a few different sub-directories in this repo. Here is a brief descript
 
 ## Configuring and compiling hpguppi_proc threads
 
+Before compiling for the first time:
+```
+ src$ autoreconf -is
+```
+
 To configure and compile the first time:
 ```
- $ cd src
- $ libtoolize
- $ autoconf
- $ autoreconf -is
- $ ./configure --with-libsla=/usr/local/listen/lib --with-libcoherent_beamformer=../lib --with-libupchannelizer_beamformer=../lib
- $ make
- ```
-
-To configure and compile any other time after:
+ src$ ./configure --with-libsla=/usr/local/listen/lib --with-libcoherent_beamformer=../lib --with-libupchannelizer_beamformer=../lib
+ src$ make
 ```
- $ cd src
- $ autoreconf -is
- $ ./configure --with-libsla=/usr/local/listen/lib --with-libcoherent_beamformer=../lib --with-libupchannelizer_beamformer=../lib
- $ make
- ```
 
-If everything is configured as it should be, you can just:
+If everything is configured as it should be, you can compile with just:
 ```
- $ make
- ```
+ src$ make
+```
 
-NOTE: libsla may be in a different directory depending on the machine.
+NOTE: libsla may be in a different directory depending on the machine. The install directories of other crucial libraries can be specified with related flags:
+- [--with-hashpipe=](https://github.com/david-macmahon/hashpipe)
+- [--with-rawspec=](https://github.com/UCBerkeleySETI/rawspec)
+- [--with-bfr5c99=](https://github.com/MydonSolutions/bfr5c99)
 
 If python library is required:
 
