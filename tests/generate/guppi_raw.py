@@ -11,7 +11,7 @@ n_time = 1024
 sample_rate = 2.048e9
 
 file_bytesize = 1*(2**30)
-block_bytesize = (n_time*n_ant*n_chan_perant*n_pols*n_bits)//8
+block_bytesize = (n_time*n_ant*n_chan_perant*n_pols*2*n_bits)//8
 
 n_obschan = n_ant*n_chan_perant
 blocks_per_file = file_bytesize // block_bytesize
