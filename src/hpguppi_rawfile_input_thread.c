@@ -160,18 +160,33 @@ static int64_t get_nxt_pktidx(int fdin, int blocsize, char * header_buf, size_t 
 */
 static int get_piperblk(char * header_buf, size_t len)
 {
-    int i;
-    char bs_str[32];
-    int piperblk = 0;
+    int block_size = 0;
+    int obsnchan = 0;
+    int npol = 0;
+    int nbits = 0;
     //Read header loop over the 80-byte records
-    for (i=0; i<len; i += 80) {
-        if(!strncmp(header_buf+i, "PIPERBLK", 6)) {
-            strncpy(bs_str,header_buf+i+16, 32);
-            piperblk = strtoul(bs_str,NULL,0);
+    for (int i=0; i<len; i += 80) {
+        if(!strncmp(header_buf+i, "BLOCSIZE", 8)) {
+            block_size = strtoul(header_buf+i+16,NULL,0);
+        }
+        else if(!strncmp(header_buf+i, "OBSNCHAN", 8)) {
+            obsnchan = strtoul(header_buf+i+16,NULL,0);
+        }
+        else if(!strncmp(header_buf+i, "NPOL", 4)) {
+            npol = strtoul(header_buf+i+16,NULL,0);
+        }
+        else if(!strncmp(header_buf+i, "NBITS", 5)) {
+            nbits = strtoul(header_buf+i+16,NULL,0);
+        }
+        if(block_size*obsnchan*npol*nbits != 0){
             break;
         }
     }
-    return piperblk;
+    printf("RAW INPUT: block_size %d\n", block_size);
+    printf("RAW INPUT: obsnchan %d\n", obsnchan);
+    printf("RAW INPUT: npol %d\n", npol);
+    printf("RAW INPUT: nbits %d\n", nbits);
+    return block_size/(obsnchan * npol * 2 * nbits);
 }
 
 static void set_output_path(char * header_buf, char * outdir, size_t len)
