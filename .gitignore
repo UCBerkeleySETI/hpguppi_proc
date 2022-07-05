@@ -21,3 +21,9 @@
 
 # Ignore .qdrep files
 *.qdrep
+
+# Ignore .raw files
+*.raw
+
+# Ignore .bfr5 files
+*.bfr5
