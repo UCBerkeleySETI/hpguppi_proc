@@ -25,7 +25,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "hdf5.h"
+#include "bfr5.h"
 #include "ioprio.h"
 
 //#include "hpguppi_time.h"
@@ -75,14 +75,14 @@ update_fb_hdrs_from_raw_hdr_cbf(fb_hdr_t fb_hdr, const char *p_rawhdr)
 
   rawspec_raw_parse_header(p_rawhdr, &raw_hdr);
   hashpipe_info(__FUNCTION__,
-      "beam_id = %d/%d", raw_hdr.beam_id, raw_hdr.nbeam);
+      "beam_id = %d/%d", raw_hdr.beam_id, raw_hdr.nbeams);
 
   // Update filterbank headers based on raw params and Nts etc.
   // Same for all products
   fb_hdr.src_raj = raw_hdr.ra;
   fb_hdr.src_dej = raw_hdr.dec;
   fb_hdr.ibeam = raw_hdr.beam_id;
-  fb_hdr.nbeams = raw_hdr.nbeam;
+  fb_hdr.nbeams = raw_hdr.nbeams;
   strncpy(fb_hdr.source_name, raw_hdr.src_name, 80);
   fb_hdr.source_name[80] = '\0';
   //fb_hdr.nchans = 16; // 1k mode
@@ -185,28 +185,11 @@ static void *run(hashpipe_thread_args_t * args)
   double block_midtime = 0;
   double time_array_midpoint = 0;
 
-  hid_t file_id, npol_id, nbeams_id, obs_id, src_id, cal_all_id, delays_id, time_array_id, ra_id, dec_id, sid1, sid2, sid4, sid5, sid6, src_dspace_id, obs_type, native_obs_type, native_src_type; // identifiers //
-  herr_t status, cal_all_elements, delays_elements, time_array_elements, ra_elements, dec_elements, src_elements;
+  BFR5_file_t bfr5_file;
 
-  //typedef struct complex_t{
-  //  float re;
-  //  float im;
-  //}complex_t;
-
-  hid_t reim_tid;
-  reim_tid = H5Tcreate(H5T_COMPOUND, sizeof(complex_t));
-  H5Tinsert(reim_tid, "r", HOFFSET(complex_t, re), H5T_IEEE_F32LE);
-  H5Tinsert(reim_tid, "i", HOFFSET(complex_t, im), H5T_IEEE_F32LE);
-
-  complex_t *cal_all_data = NULL;
-  double *delays_data;
-  double *time_array_data;
-  double *ra_data;
-  double *dec_data;
   uint64_t nbeams;
-  uint64_t npol;
-  hvl_t *src_names_str;
-  int hdf5_obsidsize;
+  uint64_t npol = 2;
+  uint64_t nbits = 8;
 
   int time_array_idx = 0; // time_array index
   FILE* coeffptr;
@@ -279,18 +262,8 @@ static void *run(hashpipe_thread_args_t * args)
       if(pktidx >= pktstop){
         coeff_flag = 0;
         // Possibly free memory here so it can be reallocated at the beginning of a scan to compensate for a change in size
-        if(cal_all_data != NULL){
-          free(cal_all_data);
-          cal_all_data = NULL;
-          free(delays_data);
-          delays_data = NULL;
-          free(time_array_data);
-          time_array_data = NULL;
-          free(ra_data);
-          ra_data = NULL;
-          free(dec_data);
-          dec_data = NULL;
-          status = H5Dvlen_reclaim(native_src_type, src_dspace_id, H5P_DEFAULT, src_names_str);
+        if(bfr5_file.cal_info.cal_all != NULL){
+          BFR5free_all(&bfr5_file);
         }
         for(int b = 0; b < nbeams; b++){
           // If file open, close it
@@ -341,8 +314,9 @@ static void *run(hashpipe_thread_args_t * args)
     hgetu8(ptr, "NANTS", &nants);
     hgetu8(ptr, "OBSNCHAN", &obsnchan);
     hgetu4(ptr, "SCHAN", &schan);
-    //hgetu8(ptr, "NPOL", &npol);
-    hgetu8(ptr, "PIPERBLK", &piperblk);
+    hgetu8(ptr, "NPOL", &npol);
+    hgetu8(ptr, "NBIT", &nbits);
+    // hgetu8(ptr, "PIPERBLK", &piperblk);
     hgetu8(ptr, "STT_SMJD", &stt_smjd);
     hgetu8(ptr, "STT_IMJD", &stt_imjd);
     hgetr8(ptr,"TBIN", &tbin);
@@ -350,8 +324,7 @@ static void *run(hashpipe_thread_args_t * args)
     hgets(ptr, "SRC_NAME", sizeof(src_name), src_name);
     hgetr8(ptr, "OBSBW", &obsbw);
     hgetu8(ptr, "BLOCSIZE", &raw_blocsize); // Raw file block size
-        
-    //printf("CBF: Number of polarizations (from RAW file) = %d\n", (int)npol);
+    piperblk = raw_blocsize / (obsnchan * npol * 2 * nbits);
     
     hashpipe_status_lock_safe(st);
     hgets(st->buf, "BASEFILE", sizeof(raw_basefilename), raw_basefilename);
@@ -407,139 +380,62 @@ static void *run(hashpipe_thread_args_t * args)
         printf("CBF: HDF5 file name with path: %s \n", hdf5_basefilename);
 
         // Read HDF5 file and get all necessary parameters (obsid, cal_all, delays, rates, time_array, ras, decs)
-        // Open an existing file. //
-        file_id = H5Fopen(hdf5_basefilename, H5F_ACC_RDONLY, H5P_DEFAULT);
+        BFR5open(hdf5_basefilename, &bfr5_file);
+        BFR5read_all(&bfr5_file);
 
-        // -------------Read obsid first----------------- //
-        // Open an existing dataset. //
-        obs_id = H5Dopen(file_id, "/obsinfo/obsid", H5P_DEFAULT);
-        // Get obsid data type //
-        obs_type = H5Dget_type(obs_id);
-        native_obs_type = H5Tget_native_type(obs_type, H5T_DIR_DEFAULT);
-        hdf5_obsidsize = (int)H5Tget_size(native_obs_type);
-        printf("obsid string size = %d\n", hdf5_obsidsize);
-        // Allocate memory to string array
-        char hdf5_obsid[hdf5_obsidsize+1];
-        hdf5_obsid[hdf5_obsidsize] = '\0'; // Terminate string
-        // Read the dataset. // 
-        status = H5Dread(obs_id, native_obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
-        printf("CBF: obsid = %s \n", hdf5_obsid);
-        // Close the dataset. //
-        status = H5Dclose(obs_id);
-        // -----------------------------------------------//
+        printf("Number of elements in the src_names dataset is : %ld\n", bfr5_file.beam_info.src_name_elements);
 
-        // -------------Read source names----------------- //
-        // Open an existing dataset. //
-        src_id = H5Dopen(file_id, "/beaminfo/src_names", H5P_DEFAULT);
-        // Get dataspace ID //
-        src_dspace_id = H5Dget_space(src_id);
-        // Gets the number of elements in the data set //
-        src_elements=H5Sget_simple_extent_npoints(src_dspace_id);
-        printf("Number of elements in the src_names dataset is : %d\n", src_elements);
-        // Create src_names data type //
-        native_src_type = H5Tvlen_create(H5T_NATIVE_CHAR);
-        // Allocate memory to string array
-        src_names_str = malloc((int)src_elements*sizeof(hvl_t));
-        // Read the dataset. //
-        status = H5Dread(src_id, native_src_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, src_names_str);
-        for(int i=0; i<src_elements; i++) {
-          printf("%d: len: %d, str is: %s\n", i, (int)src_names_str[i].len, (char *)src_names_str[i].p);
+        for(int i=0; i<bfr5_file.beam_info.src_name_elements; i++) {
+          printf("%d: len: %d, str is: %s\n", i, (int)bfr5_file.beam_info.src_names[i].len, (char *)bfr5_file.beam_info.src_names[i].p);
         }
-        // Free the memory and reset each element in the array //
-        //status = H5Dvlen_reclaim(native_src_type, src_dspace_id, H5P_DEFAULT, src_names_str);
-
-        // Close the dataset //
-        status = H5Dclose(src_id);
         // -----------------------------------------------//
 
         // Need to initialize these obsid variables
         // Figure out how to read them first
-        if(raw_obsid == hdf5_obsid){
+        if(raw_obsid == bfr5_file.obs_info.obs_id){
           printf("CBF: OBSID in RAW file and HDF5 file match!\n");
           printf("CBF: raw_obsid  = %s \n", raw_obsid);
-          printf("CBF: hdf5_obsid = %s \n", hdf5_obsid);
+          printf("CBF: hdf5_obsid = %s \n", bfr5_file.obs_info.obs_id);
         }else{
           printf("CBF (Warning): OBSID in RAW file and HDF5 file DO NOT match!\n");
           printf("CBF: raw_obsid  = %s \n", raw_obsid);
-          printf("CBF: hdf5_obsid = %s \n", hdf5_obsid);
+          printf("CBF: hdf5_obsid = %s \n", bfr5_file.obs_info.obs_id);
         }
-        // Read cal_all once per HDF5 file. It doesn't change through out the entire recording.
-        // Read delayinfo once, get all values, and update when required
-        // Open an existing datasets //
-        cal_all_id = H5Dopen(file_id, "/calinfo/cal_all", H5P_DEFAULT);
-        delays_id = H5Dopen(file_id, "/delayinfo/delays", H5P_DEFAULT);
-        time_array_id = H5Dopen(file_id, "/delayinfo/time_array", H5P_DEFAULT);
-        ra_id = H5Dopen(file_id, "/beaminfo/ras", H5P_DEFAULT);
-        dec_id = H5Dopen(file_id, "/beaminfo/decs", H5P_DEFAULT);
-        npol_id = H5Dopen(file_id, "/diminfo/npol", H5P_DEFAULT);
-        nbeams_id = H5Dopen(file_id, "/diminfo/nbeams", H5P_DEFAULT);
 
-        // Get dataspace ID //
-        sid1 = H5Dget_space(cal_all_id);
-        sid2 = H5Dget_space(delays_id);
-        sid4 = H5Dget_space(time_array_id);
-        sid5 = H5Dget_space(ra_id);
-        sid6 = H5Dget_space(dec_id);
-  
-        // Gets the number of elements in the data set //
-        cal_all_elements=H5Sget_simple_extent_npoints(sid1);
-        delays_elements=H5Sget_simple_extent_npoints(sid2);
-        time_array_elements=H5Sget_simple_extent_npoints(sid4);
-        ra_elements=H5Sget_simple_extent_npoints(sid5);
-        dec_elements=H5Sget_simple_extent_npoints(sid6);
-        printf("CBF: Number of elements in the cal_all dataset is : %d\n", cal_all_elements);
-        printf("CBF: Number of elements in the delays dataset is : %d\n", delays_elements);
-        printf("CBF: Number of elements in the time_array dataset is : %d\n", time_array_elements);
-        printf("Number of elements in the ra dataset is : %d\n", ra_elements);
-        printf("Number of elements in the dec dataset is : %d\n", dec_elements);
-
-        // Allocate memory for array
-        cal_all_data = malloc((int)cal_all_elements*sizeof(complex_t));
-        delays_data = malloc((int)delays_elements*sizeof(double));
-        time_array_data = malloc((int)time_array_elements*sizeof(double));
-        ra_data = malloc((int)ra_elements*sizeof(double));
-        dec_data = malloc((int)dec_elements*sizeof(double));
+        printf("CBF: Number of elements in the cal_all dataset is : %ld\n", bfr5_file.cal_info.cal_all_elements);
+        printf("CBF: Number of elements in the delays dataset is : %ld\n", bfr5_file.delay_info.delay_elements);
+        printf("CBF: Number of elements in the time_array dataset is : %ld\n", bfr5_file.delay_info.time_array_elements);
+        printf("Number of elements in the ra dataset is : %ld\n", bfr5_file.beam_info.ra_elements);
+        printf("Number of elements in the dec dataset is : %ld\n", bfr5_file.beam_info.dec_elements);
 
         // Read the dataset. //
-        status = H5Dread(npol_id, H5T_STD_I64LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &npol);
-        printf("npol = %lu \n", npol);
-
-        status = H5Dread(nbeams_id, H5T_STD_I64LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &nbeams);
-        printf("nbeams = %lu \n", nbeams);
-
-        status = H5Dread(cal_all_id, reim_tid, H5S_ALL, H5S_ALL, H5P_DEFAULT, cal_all_data);
-        printf("CBF: cal_all_data[%d].re = %f \n", cal_all_idx(a, p, c, (int)nants, (int)npol), cal_all_data[cal_all_idx(a, p, c, (int)nants, (int)npol)].re);
-
-        status = H5Dread(delays_id, H5T_IEEE_F64LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, delays_data);
-        printf("CBF: delays_data[%d] = %lf \n", delay_idx(a, b, t, (int)nants, (int)nbeams), delays_data[delay_idx(a, b, t, (int)nants, (int)nbeams)]);
-
-        status = H5Dread(time_array_id, H5T_IEEE_F64LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, time_array_data);
-        printf("CBF: time_array_data[0] = %lf \n", time_array_data[0]);
-
-        status = H5Dread(ra_id, H5T_IEEE_F64LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, ra_data);
-        printf("ra_data[0] = %lf \n", ra_data[0]);
-
-        status = H5Dread(dec_id, H5T_IEEE_F64LE, H5S_ALL, H5S_ALL, H5P_DEFAULT, dec_data);
-        printf("dec_data[0] = %lf \n", dec_data[0]);
-
-        // Close the dataset. //
-        status = H5Dclose(cal_all_id);
-        status = H5Dclose(delays_id);
-        status = H5Dclose(time_array_id);
-        status = H5Dclose(ra_id);
-        status = H5Dclose(dec_id);
-        status = H5Dclose(npol_id);
-        status = H5Dclose(nbeams_id);
+        printf("npol = %lu \n", bfr5_file.dim_info.npol);
+        printf("nbeams = %lu \n", bfr5_file.dim_info.nbeams);
+        printf("CBF: cal_all_data[%d].re = %f \n", cal_all_idx(a, p, c, (int)bfr5_file.dim_info.nants, (int)bfr5_file.dim_info.npol), bfr5_file.cal_info.cal_all[cal_all_idx(a, p, c, (int)bfr5_file.dim_info.nants, (int)bfr5_file.dim_info.npol)].re);
+        printf("CBF: delays_data[%d] = %lf \n", delay_idx(a, b, t, (int)bfr5_file.dim_info.nants, (int)bfr5_file.dim_info.nbeams), bfr5_file.delay_info.delays[delay_idx(a, b, t, (int)bfr5_file.dim_info.nants, (int)bfr5_file.dim_info.nbeams)]);
+        printf("CBF: time_array_data[0] = %lf \n", bfr5_file.delay_info.time_array[0]);
+        printf("ra_data[0] = %lf \n", bfr5_file.beam_info.ras[0]);
+        printf("dec_data[0] = %lf \n", bfr5_file.beam_info.decs[0]);
 
         // Close the file. //
-        status = H5Fclose(file_id);
+        status = BFR5close(&bfr5_file);
         printf("status of file close: %d\n", status);
 
         // Reset indexing of time array since new HDF5 file is in use
         time_array_idx = 0;
 
         // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
-        tmp_coefficients = generate_coefficients(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, (int)npol, (int)nbeams, (int)schan, n_chan_per_node, nants);
+        tmp_coefficients = generate_coefficients(
+          (complex_t*) bfr5_file.cal_info.cal_all,
+          bfr5_file.delay_info.delays,
+          time_array_idx,
+          coarse_chan_freq,
+          (int)bfr5_file.dim_info.npol,
+          (int)bfr5_file.dim_info.nbeams,
+          (int)schan,
+          n_chan_per_node,
+          bfr5_file.dim_info.nants
+        );
         memcpy(bf_coefficients, tmp_coefficients, N_COEFF*sizeof(float));
 
         // Get basefilename with no source name
@@ -613,11 +509,11 @@ static void *run(hashpipe_thread_args_t * args)
       // Updata coefficient if unix time in the middle of the block is greater than avg. of the two time array values
       pktidx_time = synctime + (pktidx*tbin*n_samp/piperblk);
       block_midtime = pktidx_time + tbin*n_samp/2;
-      if(time_array_idx < (time_array_elements-1)){
-        time_array_midpoint = (time_array_data[time_array_idx] + time_array_data[time_array_idx+1])/2;
-      }else if(time_array_idx >= (time_array_elements-1)){
-        time_array_midpoint = time_array_data[time_array_idx];
-        time_array_idx = time_array_elements-2;
+      if(time_array_idx < (bfr5_file.delay_info.time_array_elements-1)){
+        time_array_midpoint = (bfr5_file.delay_info.time_array[time_array_idx] + bfr5_file.delay_info.time_array[time_array_idx+1])/2;
+      }else if(time_array_idx >= (bfr5_file.delay_info.time_array_elements-1)){
+        time_array_midpoint = bfr5_file.delay_info.time_array[time_array_idx];
+        time_array_idx = bfr5_file.delay_info.time_array_elements-2;
       }
 
       printf("CBF: Unix time in the middle of the block (pktidx_time + tbin*n_samp/2) = %lf\n", block_midtime);
@@ -631,7 +527,17 @@ static void *run(hashpipe_thread_args_t * args)
 
         // Update coefficients with new delay
         // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
-        tmp_coefficients = generate_coefficients(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, (int)npol, (int)nbeams, (int)schan, n_chan_per_node, nants);
+        tmp_coefficients = generate_coefficients(
+          (complex_t*) bfr5_file.cal_info.cal_all,
+          bfr5_file.delay_info.delays,
+          time_array_idx,
+          coarse_chan_freq,
+          (int)npol,
+          (int)nbeams,
+          (int)schan,
+          n_chan_per_node,
+          nants
+        );
         memcpy(bf_coefficients, tmp_coefficients, N_COEFF*sizeof(float));
 
         // Write coefficients to binary file for analysis with CASA
@@ -688,7 +594,7 @@ static void *run(hashpipe_thread_args_t * args)
             strcpy(fb_basefilename, outdir);
             strcat(fb_basefilename, "/");
             strcat(fb_basefilename, base_no_src);
-            strcat(fb_basefilename, (char *)src_names_str[b].p);
+            strcat(fb_basefilename, (char *)bfr5_file.beam_info.src_names[b].p);
             printf("CBF: Filterbank file name with new path and no file number or extension yet: %s \n", fb_basefilename);
 
             sprintf(fname, "%s.B0%d.fil",  fb_basefilename, b);
@@ -700,7 +606,7 @@ static void *run(hashpipe_thread_args_t * args)
           strcpy(fb_basefilename, outdir);
           strcat(fb_basefilename, "/");
           strcat(fb_basefilename, base_no_src);
-          strcat(fb_basefilename, (char *)src_names_str[b].p);
+          strcat(fb_basefilename, (char *)bfr5_file.beam_info.src_names[b].p);
           printf("CBF: Filterbank file name with new path and no file number or extension yet: %s \n", fb_basefilename);
 
           sprintf(fname, "%s.B%d.fil", fb_basefilename, b);
@@ -737,9 +643,9 @@ static void *run(hashpipe_thread_args_t * args)
       for(int b = 0; b < nbeams; b++){
         fb_hdr.ibeam =  b;
         if(sim_flag == 0){
-          fb_hdr.src_raj = ra_data[b];
-          fb_hdr.src_dej = dec_data[b];
-          strncpy(fb_hdr.source_name, (char *)src_names_str[b].p, 80);
+          fb_hdr.src_raj = bfr5_file.beam_info.ras[b];
+          fb_hdr.src_dej = bfr5_file.beam_info.decs[b];
+          strncpy(fb_hdr.source_name, (char *)bfr5_file.beam_info.src_names[b].p, 80);
           fb_hdr.source_name[80] = '\0';
         }
         fb_fd_write_header(fdraw[b], &fb_hdr);

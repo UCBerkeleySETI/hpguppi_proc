@@ -28,6 +28,9 @@ AM_CONDITIONAL([HAVE_AVX512F],
 # Check for HASHPIPE
 AX_CHECK_HASHPIPE
 
+# Check for bfr5c99
+AX_CHECK_BFR5C99
+
 # Check for rawspec
 AX_CHECK_RAWSPEC
 
