@@ -11,15 +11,17 @@ For help on how to run the executable, type in `-h` or `--help` as the first arg
 The post-processing scripts in the post_processing directory are used for analysis and verification.
 
 The plot_upchan_beamformer_output_binary_py3.py is the script currently being used to analyze the output of the standalone code.
-Inorder to run this script, a few arguments need to be used:
-- The output file of the upchannelizer beamformer standalone code
-- The telescope i.e. MK or VLA for now
-- And the mode e.g. for MK; '1k', '4k' or '32k', and for VLA; 'req' or 'des' (required or desired specifications)
+Inorder to run this script, a few parameters need to be specified in the script. The following variables will need to be changed depending on the mode that was run:
+- `filename` - The output file of the upchannelizer beamformer standalone code
+- `telescope_flag` - The telescope i.e. `"MK"` or `"VLA"` for now
+- `mode_flag` - And the mode e.g. for MK; `"1k"`, `"4k"` or `"32k"`, and for VLA; `"req"` or `"des"` (required or desired specifications)
+- `N_beam` - Number of beams
+- `N_time` - Number of time samples remaining after integration
+- `N_fine` - Number of fine channels only relevant with the desired specification of the `"VLA"` mode
 An example of the command is as follows:
-- `python plot_upchan_beamformer_output_binary_py3.py /datag/users/mruzinda/o/output_d_fft_bf.bin MK 4k`
-If the number of beams and time samples needs to be specified, then the two need to be added respectively.
-For example, if the number of beams in the output file of the upchannelizer beamformer is 61 and there is 1 time sample so all spectra are integrated, then the command becomes:
-- `python plot_upchan_beamformer_output_binary_py3.py /datag/users/mruzinda/o/output_d_fft_bf.bin MK 4k 61 1`
+- `python plot_upchan_beamformer_output_binary_py3.py`
+
+Or in VS code, above the `#%%` indicating the beginning of a cell, click on one of the options to run the code.
 
 The plot_cufft_output_binary.py reads a raw binary file with the output of the data that doesn't have an FFT shift and it applies one to the data.
 

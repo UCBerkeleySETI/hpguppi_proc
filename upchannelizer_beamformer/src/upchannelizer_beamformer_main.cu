@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
 	int n_ant_config = 0;
 	int n_chan = 0;
 	int nt = 0;
-        int n_win = 0;
+    int n_win = 0;
 	int n_time_int = 0;
 	int n_input = 0;
 
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
 			// 1k mode
 			if(strcmp(mode_flag, "1k") == 0){
 				n_chan = 1; 
-		        	nt = 2*4096*1024; // 4194304; // 2^22
+		        nt = 2*4096*1024; // 4194304; // 2^22
 			}// 4k mode
 			else if(strcmp(mode_flag, "4k") == 0){
 			    	n_chan = 4; // 64
@@ -218,11 +218,11 @@ int main(int argc, char **argv) {
 			// 1k mode
 			if(strcmp(mode_flag, "1k") == 0){
 				n_chan = 1; 
-			        nt = 4096*1024; // 4194304; // 2^22
+			    nt = 4096*1024; // 4194304; // 2^22
 			}// 4k mode
 			else if(strcmp(mode_flag, "4k") == 0){
 				n_chan = 4; // 64
-		        	nt = 1024*1024; // 1048576; // 2^20
+		        nt = 1024*1024; // 1048576; // 2^20
 			}// 32k mode
 			if(strcmp(mode_flag, "32k") == 0){
 				n_chan = 32;
