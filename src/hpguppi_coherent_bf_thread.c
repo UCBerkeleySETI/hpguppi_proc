@@ -75,14 +75,14 @@ update_fb_hdrs_from_raw_hdr_cbf(fb_hdr_t fb_hdr, const char *p_rawhdr)
 
   rawspec_raw_parse_header(p_rawhdr, &raw_hdr);
   hashpipe_info(__FUNCTION__,
-      "beam_id = %d/%d", raw_hdr.beam_id, raw_hdr.nbeams);
+      "beam_id = %d/%d", raw_hdr.beam_id, raw_hdr.nbeam);
 
   // Update filterbank headers based on raw params and Nts etc.
   // Same for all products
   fb_hdr.src_raj = raw_hdr.ra;
   fb_hdr.src_dej = raw_hdr.dec;
   fb_hdr.ibeam = raw_hdr.beam_id;
-  fb_hdr.nbeams = raw_hdr.nbeams;
+  fb_hdr.nbeams = raw_hdr.nbeam;
   strncpy(fb_hdr.source_name, raw_hdr.src_name, 80);
   fb_hdr.source_name[80] = '\0';
   //fb_hdr.nchans = 16; // 1k mode

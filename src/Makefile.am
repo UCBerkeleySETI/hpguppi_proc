@@ -8,7 +8,7 @@ AM_CPPFLAGS += -I"@UBF_INCDIR@"
 # AM_CFLAGS is used for all C compiles
 AM_CFLAGS = -ggdb -fPIC -O3 -Wall -Werror -Wno-error=cpp -fno-strict-aliasing @X86_FEATURE_CFLAGS@
 
-AM_CFLAGS += -Wno-error=stringop-truncation -Wno-error=format-overflow -Wno-error=unused-const-variable -Wno-error=sizeof-pointer-div
+#AM_CFLAGS += -Wno-error=stringop-truncation -Wno-error=format-overflow -Wno-error=unused-const-variable -Wno-error=sizeof-pointer-div
 AM_CFLAGS += -I"/usr/include/hdf5/serial"
 AM_CFLAGS += -L"/lib/x86_64-linux-gnu/hdf5/serial"
 
