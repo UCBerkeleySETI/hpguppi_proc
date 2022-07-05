@@ -330,7 +330,7 @@ int main(int argc, char **argv) {
 
 	float time_taken = 0;
 	float bf_time = 0;
-	int num_runs = 10;
+	int num_runs = 1;
 
 	// Start timing FFT computation //
 	struct timespec tval_before, tval_after;
@@ -340,10 +340,10 @@ int main(int argc, char **argv) {
 		clock_gettime(CLOCK_MONOTONIC, &tval_before);
 
 		// Run FFT 
-                // Things to keep in mind about FFT output:
+        // Things to keep in mind about FFT output:
 		// - FFT shift possibly required after FFT if too much memory is allocated
 		// - Output may need to be divided number of FFT points
-                output_data = run_upchannelizer_beamformer(sim_data, sim_coefficients, n_pol, n_sim_ant, n_beam, n_chan, n_win, n_time_int, n_samp, telescope_flag);
+        output_data = run_upchannelizer_beamformer(sim_data, sim_coefficients, n_pol, n_sim_ant, n_beam, n_chan, n_win, n_time_int, n_samp, telescope_flag);
 
 		// Stop timing FFT computation //
 		clock_gettime(CLOCK_MONOTONIC, &tval_after);

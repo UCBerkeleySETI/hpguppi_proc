@@ -163,3 +163,5 @@ if(chk_flag==1):
         
     print(tmp_calc*64*8) # Output of beamformer
     #print(tmp_calc*tmp_calc + tmp_calc*tmp_calc) # Output power with imaginary part set to zero
+
+# %%
