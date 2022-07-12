@@ -92,7 +92,7 @@ plt.show()
 
 # Plot of power spectrum of incoherent beam
 plt.plot(contents_array[incoherent_beam_idx,time_idx,0:int(N_coarse*N_fine)])
-plt.title('Power spectrum of Incoehrent beam')
+plt.title('Power spectrum of Incoherent beam')
 plt.xlabel('Frequency bins')
 plt.ylabel('Power (arb.)')
 plt.show()

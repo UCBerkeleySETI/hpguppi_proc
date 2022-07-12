@@ -681,17 +681,26 @@ static void *run(hashpipe_thread_args_t * args)
       update_fb_hdrs_from_raw_hdr_ubf(fb_hdr, p_header);
 
       // Open nbeams filterbank files to save a beam per file i.e. N_BIN*n_fft*sizeof(float) per file.
+      // Added 1 to nbeams to account for the incoherent beam.
       //printf("UBF: Opening filterbank files \n");
-      for(int b = 0; b < nbeams; b++){
+      for(int b = 0; b < (nbeams+1); b++){
         if(sim_flag == 0){
           // Set specified path to write filterbank files
-          strcpy(fb_basefilename, outdir);
-          strcat(fb_basefilename, "/");
-          strcat(fb_basefilename, base_no_src);
-	  p_end = fb_basefilename + strlen(fb_basefilename) + src_names_str[b].len;
-          strncat(fb_basefilename, (char *)src_names_str[b].p, src_names_str[b].len);
-	  *p_end = '\0';
-
+          if(b == nbeams){
+            strcpy(fb_basefilename, outdir);
+            strcat(fb_basefilename, "/");
+            strcat(fb_basefilename, base_no_src);
+	          p_end = fb_basefilename + strlen(fb_basefilename) + strlen(src_name);
+            strncat(fb_basefilename, src_name, strlen(src_name));
+	          *p_end = '\0';
+          }else{
+            strcpy(fb_basefilename, outdir);
+            strcat(fb_basefilename, "/");
+            strcat(fb_basefilename, base_no_src);
+	          p_end = fb_basefilename + strlen(fb_basefilename) + src_names_str[b].len;
+            strncat(fb_basefilename, (char *)src_names_str[b].p, src_names_str[b].len);
+	          *p_end = '\0';
+          }
           sprintf(fname, "%s.SB%02d.B%02d.fil",  fb_basefilename, subband_idx, b);
         }else if(sim_flag == 1){
           sprintf(fname, "%s.B0.fil",  fb_basefilename);
@@ -732,13 +741,21 @@ static void *run(hashpipe_thread_args_t * args)
       fb_hdr.rawdatafile[80] = '\0';
 
       // Write filterbank header to output file
-      for(int b = 0; b < nbeams; b++){
+      // Added 1 to nbeams to account for the incoherent beam
+      for(int b = 0; b < (nbeams+1); b++){
         fb_hdr.ibeam =  b;
         if(sim_flag == 0){
-          fb_hdr.src_raj = ra_data[b]*12/PI;
-          fb_hdr.src_dej = dec_data[b]*180/PI;
-          strncpy(fb_hdr.source_name, (char *)src_names_str[b].p, src_names_str[b].len);
-          fb_hdr.source_name[src_names_str[b].len] = '\0';
+          if(b == nbeams){
+            fb_hdr.src_raj = ra_data[0]*12/PI; // RA of Boresight beam
+            fb_hdr.src_dej = dec_data[0]*180/PI; // Dec of Boresight beam
+            strncpy(fb_hdr.source_name, src_name, strlen(src_name));
+            fb_hdr.source_name[strlen(src_name)] = '\0';
+          }else{
+            fb_hdr.src_raj = ra_data[b]*12/PI;
+            fb_hdr.src_dej = dec_data[b]*180/PI;
+            strncpy(fb_hdr.source_name, (char *)src_names_str[b].p, src_names_str[b].len);
+            fb_hdr.source_name[src_names_str[b].len] = '\0';
+          }
         }
         fb_fd_write_header(fdraw[b], &fb_hdr);
       }
@@ -866,7 +883,7 @@ static void *run(hashpipe_thread_args_t * args)
     struct timespec tval_before_w, tval_after_w;
     clock_gettime(CLOCK_MONOTONIC, &tval_before_w);
 
-    for(int b = 0; b < nbeams; b++){
+    for(int b = 0; b < (nbeams+1); b++){
       rv = write(fdraw[b], &output_data[b*n_coarse_proc*n_fft*n_sti], (size_t)blocksize);
       if(rv != blocksize){
         char msg[100];

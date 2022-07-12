@@ -21,18 +21,20 @@ hpguppi_databuf = hpguppi_databuf.h \
 hpguppi_support = hpguppi_rawspec.h \
                   hpguppi_rawspec.c \
                   hpguppi_params.c \
-		  hpguppi_time.h   \
-		  hpguppi_time.c   \
-		  hpguppi_util.h   \
-		  hpguppi_util.c   \
-		  psrfits.h
+		  		  hpguppi_time.h   \
+		  		  hpguppi_time.c   \
+		  		  hpguppi_util.h   \
+		  		  hpguppi_util.c   \
+		  	   	  psrfits.h
 
 libsla_support = slalib.h sla.c f77.h
 
 hpguppi_threads = hpguppi_rawdisk_only_thread.c \
-		  hpguppi_fildisk_meerkat_thread.c \
-		  hpguppi_rawfile_input_thread.c \
-		  hpguppi_coherent_bf_thread.c
+		  		  hpguppi_fildisk_meerkat_thread.c \
+		  		  hpguppi_rawfile_input_thread.c \
+		  		  hpguppi_coherent_bf_thread.c \
+				  hpguppi_stride_input_thread.c \
+		  		  hpguppi_upchan_bf_thread.c
 
 # This is the hpguppi_proc plugin
 lib_LTLIBRARIES = hpguppi_proc.la

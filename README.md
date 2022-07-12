@@ -17,9 +17,11 @@ Before compiling for the first time:
 
 To configure and compile the first time:
 ```
- src$ ./configure --with-libsla=/usr/local/listen/lib --with-libcoherent_beamformer=../lib --with-libupchannelizer_beamformer=../lib
+ src$ ./configure --with-libsla=/usr/local/listen/lib --with-libcoherent_beamformer=../lib --with-libupchannelizer_beamformer=../lib --with-bfr5c99=~/bfr5c99/install
  src$ make
 ```
+
+Ensure that you have cloned the bfr5c99 repo: https://github.com/MydonSolutions/bfr5c99. Additional instructions for this will be provided shortly.
 
 If everything is configured as it should be, you can compile with just:
 ```
