@@ -27,13 +27,21 @@ void data_transpose_ubf(signed char* data_in, cuComplex* data_tra, int offset, i
 __global__
 void fft_shift(cuComplex* data_in, cuComplex* data_tra, int offset, int n_ant_config, int n_pol, int n_coarse, int n_win, int n_fine);
 
-// Perform beamforming operation
+// Perform coherent beamforming operation
 __global__
 void coherent_beamformer_ubf(cuComplex* input_data, float* coeff, float* output_data, int offset, int n_ant_config, int n_pol, int n_fine, int n_coarse, int n_beam, int n_win);
+
+// Perform incoherent beamforming operation
+__global__
+void incoherent_beamformer_ubf(cuComplex* input_data, float* output_data, int offset, int n_ant_config, int n_pol, int n_fine, int n_coarse, int n_beam, int n_win);
 
 // Compute power of beamformer output with STI (abs()^2)
 __global__
 void beamformer_power_sti_ubf(cuComplex* bf_volt, float* bf_power, int offset, int n_pol, int n_beam, int n_coarse, int n_fine, int n_time_int, int n_sti);
+
+// Integrate over time samples for incoherent beamformer output
+__global__
+void beamformer_sti_ubf(float* bf_pow, float* bf_sti, int offset, int n_pol, int n_beam, int n_coarse, int n_fine, int n_time_int, int n_sti);
 
 // Convenience function for checking CUDA runtime API results
 // can be wrapped around any runtime API call. No-op in release builds.
@@ -91,6 +99,8 @@ cufftResult checkCufft(cufftResult result)
 signed char* d_data_char = NULL;
 cuComplex* d_data_comp = NULL;
 cuComplex* d_data_shift = NULL;
+float* d_data_incoh_bf = NULL;
+float* d_data_bf_sti = NULL;
 float* d_coeff = NULL;
 //float* d_coh_bf_pow = NULL;
 float* h_bf_pow = NULL;
@@ -110,6 +120,14 @@ void init_upchan_beamformer(int telescope_flag) {
 
 		// Allocate memory for data with FFT shift cuComplex type
 		checkCuda_ubf(cudaMalloc((void **)&d_data_shift, (N_INPUT) * sizeof(cuComplex) / 2));
+		printf("Here 3rd cudaMalloc! \n");
+
+		// Allocate memory for input data cuComplex type
+		checkCuda_ubf(cudaMalloc((void **)&d_data_incoh_bf, (N_INPUT/N_BEAM) * sizeof(float)));
+		printf("Here 2nd cudaMalloc! \n");
+
+		// Allocate memory for data with FFT shift cuComplex type
+		checkCuda_ubf(cudaMalloc((void **)&d_data_bf_sti, (N_INPUT/N_BEAM) * sizeof(float)));
 		printf("Here 3rd cudaMalloc! \n");
 
 		// Allocate memory for coefficients float type
@@ -132,6 +150,14 @@ void init_upchan_beamformer(int telescope_flag) {
 
 		// Allocate memory for data with FFT shift cuComplex type
 		checkCuda_ubf(cudaMalloc((void **)&d_data_shift, (VLASS_N_INPUT) * sizeof(cuComplex) / 2));
+		printf("Here 3rd cudaMalloc! \n");
+
+		// Allocate memory for input data cuComplex type
+		checkCuda_ubf(cudaMalloc((void **)&d_data_incoh_bf, (VLASS_N_INPUT/VLASS_N_BEAM) * sizeof(float)));
+		printf("Here 2nd cudaMalloc! \n");
+
+		// Allocate memory for data with FFT shift cuComplex type
+		checkCuda_ubf(cudaMalloc((void **)&d_data_bf_sti, (VLASS_N_INPUT/VLASS_N_BEAM) * sizeof(float)));
 		printf("Here 3rd cudaMalloc! \n");
 
 		// Allocate memory for coefficients float type
@@ -285,7 +311,7 @@ void fft_shift(cuComplex* data_in, cuComplex* data_tra, int offset, int n_ant_co
 	return;
 }
 
-// Perform beamforming operation
+// Perform coherent beamforming operation
 __global__
 void coherent_beamformer_ubf(cuComplex* input_data, float* coeff, cuComplex* output_data, int offset, int n_ant_config, int n_pol, int n_fine, int n_coarse, int n_beam, int n_win) {
 	int a = threadIdx.x; // Antenna index
@@ -297,15 +323,17 @@ void coherent_beamformer_ubf(cuComplex* input_data, float* coeff, cuComplex* out
 
 	int n_freq_streams = n_coarse/N_STREAMS;
 
+	int i = 0;
+	int w = 0;
 	if(c < n_freq_streams){
 		for (int p = 0; p < n_pol; p++) { // Polarization index
 			for (int s = 0; s < n_win; s++) { // STI window index
 
-				int i = data_fftshift_idx(a, p, f, (c + offset), s, n_ant_config, n_pol, n_fine, n_coarse);
-	                        int w = coeff_idx(a, p, b, (c + offset), n_ant_config, n_pol, n_beam);
+				i = data_fftshift_idx(a, p, f, (c + offset), s, n_ant_config, n_pol, n_fine, n_coarse);
+            	w = coeff_idx(a, p, b, (c + offset), n_ant_config, n_pol, n_beam);
 
 				if (a < n_ant_config) {
-	       	                         // Conjugated coefficients places the minus operation in the imaginary component
+        	        // Conjugated coefficients places the minus operation in the imaginary component
 					reduced_mul[a].x = input_data[i].x * coeff[2*w] + input_data[i].y * coeff[2*w + 1];
 					reduced_mul[a].y = input_data[i].y * coeff[2*w] - input_data[i].x * coeff[2*w + 1];
 				}
@@ -326,6 +354,49 @@ void coherent_beamformer_ubf(cuComplex* input_data, float* coeff, cuComplex* out
 					int h1 = coh_bf_idx(p, b, f, (c + offset), s, n_pol, n_beam, n_coarse, n_fine);
 					output_data[h1].x = reduced_mul[0].x;
 					output_data[h1].y = reduced_mul[0].y;
+				}
+			}
+		}
+	}
+	return;
+}
+
+// Perform incoherent beamforming operation
+__global__
+void incoherent_beamformer_ubf(cuComplex* input_data, float* output_data, int offset, int n_ant_config, int n_pol, int n_fine, int n_coarse, int n_beam, int n_win) {
+	int a = threadIdx.x; // Antenna index
+	int f = blockIdx.x;  // Fine channel index
+	int c = blockIdx.y;  // Coarse channel index
+
+	__shared__ float reduced_mul[N_ANT];
+
+	int n_freq_streams = n_coarse/N_STREAMS;
+
+	int i = 0;
+	if(c < n_freq_streams){
+		for (int p = 0; p < n_pol; p++) { // Polarization index
+			for (int s = 0; s < n_win; s++) { // STI window index
+
+				i = data_fftshift_idx(a, p, f, (c + offset), s, n_ant_config, n_pol, n_fine, n_coarse);
+
+				if (a < n_ant_config) {
+    	            // Conversion to power before beamforming (incoherent beamforming)
+					reduced_mul[a] = input_data[i].x * input_data[i].x + input_data[i].y * input_data[i].y;
+				}
+				else {
+					reduced_mul[a] = 0;
+				}
+				__syncthreads();
+
+				for (int k = blockDim.x / 2; k > 0; k >>= 1) {
+					if (a < k) {
+						reduced_mul[a] += reduced_mul[a + k];
+					}
+					__syncthreads();
+				}
+				if (a == 0) {
+					int h1 = coh_bf_idx(p, 0, f, (c + offset), s, n_pol, 1, n_coarse, n_fine);
+					output_data[h1] = reduced_mul[0];
 				}
 			}
 		}
@@ -355,6 +426,7 @@ void beamformer_power_sti_ubf(cuComplex* bf_volt, float* bf_power, int offset, i
 	__shared__ float reduced_array[N_STI_BLOC];
 
 	for(s = 0; s<n_sti; s++){
+		// Coherent beamforming
 		xp = coh_bf_idx(0, b, f, (c + offset), (s*n_time_int + t), n_pol, n_beam, n_coarse, n_fine); // X polarization
 		yp = coh_bf_idx(1, b, f, (c + offset), (s*n_time_int + t), n_pol, n_beam, n_coarse, n_fine); // Y polarization
 		h = pow_bf_idx(f, (c + offset), s, b, n_fine, n_coarse, n_sti);
@@ -418,17 +490,101 @@ void beamformer_power_sti_ubf(cuComplex* bf_volt, float* bf_power, int offset, i
 	return;
 }
 
+// Integrate over time samples for incoherent beamformer output
+__global__
+void beamformer_sti_ubf(float* bf_pow, float* bf_sti, int offset, int n_pol, int n_beam, int n_coarse, int n_fine, int n_time_int, int n_sti) {
+	int t = threadIdx.x; // Time sample index
+	int f = blockIdx.x;  // Fine channel index
+	int c = blockIdx.y;  // Coarse channel index
+	int s = 0;           // STI window index
+	int h = 0;
+	int xp = 0; // X polarization
+	int yp = 0; // Y polarization
+
+	int n_freq_streams = n_coarse/N_STREAMS;
+	
+	float x_pol_pow; // XX*
+	float y_pol_pow; // YY*
+	float beam_power;
+	//float scale = 1.0; // /n_sti;
+
+	__shared__ float reduced_array[N_STI_BLOC];
+
+	for(s = 0; s<n_sti; s++){
+		 // Integrate over time samples from incoherent beam. No power conversion necessary here.
+		xp = coh_bf_idx(0, 0, f, (c + offset), (s*n_time_int + t), n_pol, 1, n_coarse, n_fine); // X polarization
+		yp = coh_bf_idx(1, 0, f, (c + offset), (s*n_time_int + t), n_pol, 1, n_coarse, n_fine); // Y polarization
+		h = pow_bf_idx(f, (c + offset), s, 0, n_fine, n_coarse, n_sti);
+		if(c < n_freq_streams){	
+			if(n_pol == 1){
+				if (t < n_time_int) {
+					// // Incoherent beam already converted to power
+					x_pol_pow = bf_pow[xp]; // XX*
+					beam_power = x_pol_pow; // XX*
+					reduced_array[t] = beam_power;
+				}
+				else{
+					reduced_array[t] = 0.0;
+				}
+				__syncthreads();
+
+				// Reduction is performed by splitting up the threads in each block and summing them all up.
+				// The number of threads in each block needs to be a power of two in order for the reduction to work. (No left over threads).
+				for(int k = blockDim.x/2; k>0; k>>=1){
+					if(t<k){
+						reduced_array[t] += reduced_array[t+k];
+					}
+					__syncthreads();
+				}
+	
+				// After reduction is complete, assign each reduced value to appropriate position in output array.
+				if(t == 0){
+					bf_sti[h] = reduced_array[0];
+				}
+			}else if(n_pol == 2){
+				if (t < n_time_int) {
+					// Power = Absolute value squared of output -> r^2 + i^2
+					x_pol_pow = bf_pow[xp]; // XX*
+					y_pol_pow = bf_pow[yp]; // YY*
+					beam_power = x_pol_pow + y_pol_pow; // XX* + YY*
+					reduced_array[t] = beam_power;
+				}
+				else{
+					reduced_array[t] = 0.0;
+				}
+				__syncthreads();
+
+				// Reduction is performed by splitting up the threads in each block and summing them all up.
+				// The number of threads in each block needs to be a power of two in order for the reduction to work. (No left over threads).
+				for(int k = blockDim.x/2; k>0; k>>=1){
+					if(t<k){
+						reduced_array[t] += reduced_array[t+k];
+					}
+					__syncthreads();
+				}
+	
+				// After reduction is complete, assign each reduced value to appropriate position in output array.
+				if(t == 0){
+					bf_sti[h] = reduced_array[0];
+				}
+			}
+		}	
+	}
+
+	return;
+}
+
 // Run upchannelizer and beamformer
 float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag) {
 
 	cudaError_t err_code;
 
-        // Total number of time samples
-        int nt = n_win*n_samp;
+    // Total number of time samples
+    int nt = n_win*n_samp;
 
 	int n_sti = n_win/n_time_int; // Number of STI windows
 
-        int n_ant_config = 0; // Number of antennas depending on configuration
+    int n_ant_config = 0; // Number of antennas depending on configuration
 
 	// If the number of antennas is half of N_ANT (subarray configuration),
 	// then the antenna dimension needs to be half of N_ANT
@@ -450,15 +606,25 @@ float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, 
 	dim3 dimBlock_coh_bf(n_ant_config, 1, 1);
 	dim3 dimGrid_coh_bf(n_samp, n_chan, n_beam);
 
-	// Output power of beamformer kernel with STI: Specify grid and block dimensions
+	// Incoherent beamformer kernel: Specify grid and block dimensions
+	dim3 dimBlock_incoh_bf(n_ant_config, 1, 1);
+	dim3 dimGrid_incoh_bf(n_samp, n_chan, 1);
+
+	// Output power of coherent beamformer kernel with STI: Specify grid and block dimensions
 	dim3 dimBlock_bf_pow(N_STI_BLOC, 1, 1);
 	dim3 dimGrid_bf_pow(n_samp, n_chan, n_beam);
+
+
+	// Integrate over time samples of output of incoherent beamformer kernel with STI: Specify grid and block dimensions
+	dim3 dimBlock_bf_sti(N_STI_BLOC, 1, 1);
+	dim3 dimGrid_bf_sti(n_samp, n_chan, 1);
 
 	signed char* d_data_in = d_data_char;
 	cuComplex* d_data_tra = d_data_comp;
 	cuComplex* d_data_tra2 = d_data_shift;
 	float* d_coefficient = d_coeff;
-	//float* d_bf_pow = d_coh_bf_pow;
+	float* d_incoh_bf = d_data_incoh_bf;
+	float* d_bf_sti = d_data_bf_sti;
 	float* data_out = h_bf_pow;
 
 	// Copy beamformer coefficients from host to device
@@ -468,15 +634,15 @@ float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, 
 	// Copy input data from host to device
 	checkCuda_ubf(cudaMemcpy(d_data_in, data_in, 2*n_ant_config*n_pol*nt*n_chan*sizeof(signed char), cudaMemcpyHostToDevice));
 
-        // Perform transpose on the data and convert to floats  
-        data_transpose_ubf<<<dimGrid_transpose, dimBlock_transpose>>>(d_data_in, d_data_tra, 0, n_pol, n_chan, n_ant, n_ant_config, n_samp, n_win);
-        err_code = cudaGetLastError();
+    // Perform transpose on the data and convert to floats  
+    data_transpose_ubf<<<dimGrid_transpose, dimBlock_transpose>>>(d_data_in, d_data_tra, 0, n_pol, n_chan, n_ant, n_ant_config, n_samp, n_win);
+    err_code = cudaGetLastError();
 	if (err_code != cudaSuccess) {
 		printf("FFT: data_transpose() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
-        // Upchannelize the data
-        upchannelize((complex_t*)d_data_tra, n_ant_config, n_pol, n_chan, n_win, n_samp);
+    // Upchannelize the data
+    upchannelize((complex_t*)d_data_tra, n_ant_config, n_pol, n_chan, n_win, n_samp);
 
 	// FFT shift and transpose
 	fft_shift<<<dimGrid_fftshift, dimBlock_fftshift>>>(d_data_tra, d_data_tra2, 0, n_ant_config, n_pol, n_chan, n_win, n_samp);
@@ -495,6 +661,13 @@ float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, 
 		printf("FFT: coherent_beamformer_ubf() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	// Incoherent beamformer
+	incoherent_beamformer_ubf<<<dimGrid_incoh_bf, dimBlock_incoh_bf>>>(d_data_tra2, d_incoh_bf, 0, n_ant_config, n_pol, n_samp, n_chan, (n_beam+1), n_win);
+	err_code = cudaGetLastError();
+	if (err_code != cudaSuccess) {
+		printf("FFT: incoherent_beamformer_ubf() kernel Failed: %s\n", cudaGetErrorString(err_code));
+	}
+
 	// Set input of coherent_beamformer_ubf() to zero so it can be used as the output of the beamformer_power_sti_ubf() kernel
 	set_second_to_zero(telescope_flag);
 
@@ -505,10 +678,18 @@ float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, 
 		printf("FFT: beamformer_power_sti() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	// Short time integration after beamforming
+	beamformer_sti_ubf<<<dimGrid_bf_sti, dimBlock_bf_sti>>>(d_incoh_bf, d_bf_sti, 0, n_pol, (n_beam+1), n_chan, n_samp, n_time_int, n_sti);
+	err_code = cudaGetLastError();
+	if (err_code != cudaSuccess) {
+		printf("FFT: beamformer_power_sti() kernel Failed: %s\n", cudaGetErrorString(err_code));
+	}
+
 	// Copy input data from device to host
 	checkCuda_ubf(cudaMemcpy(data_out, (float*)d_data_tra2, n_beam*n_sti*n_samp*n_chan*sizeof(float), cudaMemcpyDeviceToHost));
+	checkCuda_ubf(cudaMemcpy(&data_out[n_beam*n_sti*n_samp*n_chan], d_bf_sti, n_sti*n_samp*n_chan*sizeof(float), cudaMemcpyDeviceToHost));
 
-        return data_out;
+    return data_out;
 }
 
 // Generate simulated data
@@ -600,7 +781,7 @@ signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 	if (sim_flag == 5) {
 		float freq = 1e3; // Resonant frequency
 
-                float tmp_max = 1.0;
+        float tmp_max = 1.0;
 		float tmp_min = -1.0;
 
 		for (int w = 0; w < n_win; w++) {
@@ -770,6 +951,38 @@ float* generate_coefficients_ubf(complex_t* phase_up, double* delay, int n, doub
 	}
 
 	return coefficients;
+}
+
+// The input_data_pin() function uses cudaHostRegister() to allocate the input host
+// array in pinned memory.
+// This speeds up the cudaMemcpy() and enables implementation into HASHPIPE/RTOS.
+//void input_data_pin(float * data_in_pin) {
+void input_data_pin(signed char * data_in_pin, int telescope_flag) {
+	int n_input = 0;
+	if(telescope_flag == 0){
+		n_input = N_INPUT;
+	}else if(telescope_flag == 1){
+		n_input = VLASS_N_INPUT;
+	}
+	checkCuda_ubf(cudaHostRegister(data_in_pin, n_input*sizeof(signed char), cudaHostRegisterPortable));
+}
+
+// The data_coeff_pin() function uses cudaHostRegister() to allocate the input host
+// array in pinned memory.
+// This speeds up the cudaMemcpy() and enables implementation into HASHPIPE/RTOS.
+void coeff_pin(float * data_coeff_pin, int telescope_flag) {
+	int n_coeff = 0;
+	if(telescope_flag == 0){
+		n_coeff = N_COEFF;
+	}else if(telescope_flag == 1){
+		n_coeff = VLASS_N_COEFF;
+	}
+	checkCuda_ubf(cudaHostRegister(data_coeff_pin, n_coeff*sizeof(float), cudaHostRegisterPortable));
+}
+
+// Unregister host arrays from pinned memory
+void unregister_data(void * data_unregister){
+	checkCuda_ubf(cudaHostUnregister(data_unregister));
 }
 
 // Free memory

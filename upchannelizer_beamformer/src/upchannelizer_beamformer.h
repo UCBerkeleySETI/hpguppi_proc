@@ -23,9 +23,9 @@
 #define N_COEFF       (unsigned long int)(2*N_POL*N_ANT*N_BEAM*N_FREQ)                  // Size of beamformer coefficients
 #define DELAY_POLYS   (unsigned long int)(2)                                            // Number of coefficients in polynomial
 #define N_DELAYS      (unsigned long int)(DELAY_POLYS*N_ANT*N_BEAM)                     // Size of first order polynomial delay array
-#define N_OUTPUT      (unsigned long int)(2*N_POL*N_BEAM*N_FREQ*N_TIME)                 // Size of beamformer output
+#define N_OUTPUT      (unsigned long int)(2*N_POL*(N_BEAM)*N_FREQ*N_TIME)                 // Size of beamformer output
 #define N_FFT         (16384)                                                           // N-points of FFT in 32k mode
-#define N_BF_POW      (unsigned long int)(N_BEAM*N_FREQ*N_FFT)                          // Size of beamformer output after abs()^2 and short time integration
+#define N_BF_POW      (unsigned long int)((N_BEAM+1)*N_FREQ*N_FFT)                          // Size of beamformer output after abs()^2 and short time integration
 // For cuFFT
 #define RANK                (1)
 //#define BATCH(Np,Nw,Nf)     (N_ANT)*(Np)*(Nw)*(Nf)
@@ -46,7 +46,7 @@
 
 #define VLASS_N_INPUT       (unsigned long int)(2*N_POL*VLASS_N_TIME*VLASS_N_FREQ*(N_ANT/2))              // Size of input. Currently, same size as output
 #define VLASS_N_COEFF       (unsigned long int)(2*N_POL*(N_ANT/2)*VLASS_N_BEAM*VLASS_N_FREQ)              // Size of beamformer coefficients
-#define VLASS_N_BF_POW      (unsigned long int)(VLASS_N_BEAM*VLASS_N_FREQ*VLASS_N_FFT*VLASS_N_WIN)        // Size of beamformer output after abs()^2 and short time integration
+#define VLASS_N_BF_POW      (unsigned long int)((VLASS_N_BEAM+1)*VLASS_N_FREQ*VLASS_N_FFT*VLASS_N_WIN)        // Size of beamformer output after abs()^2 and short time integration
 
 #ifndef min
 #define min(a,b) ((a < b) ? a : b)
@@ -92,10 +92,10 @@ void set_to_zero_ubf(int telescope_flag); // Set arrays to zero after a block is
 signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag);
 float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam, int n_chan, int sim_flag, int telescope_flag);
 float* generate_coefficients_ubf(complex_t* phase_up, double* delay, int n, double* coarse_chan, int n_ant_config, int n_pol, int n_beam, int actual_n_beam, int schan, int n_coarse, int subband_idx, uint64_t n_real_ant, int telescope_flag);
-//void input_data_pin(signed char * data_in_pin);
+void input_data_pin(signed char * data_in_pin, int telescope_flag);
 //void output_data_pin(float * data_out_pin);
-//void coeff_pin(float * data_coeff_pin);
-//void unregister_data(void * data_unregister);
+void coeff_pin(float * data_coeff_pin, int telescope_flag);
+void unregister_data(void * data_unregister);
 void Cleanup_beamformer();
 void upchannelize(complex_t* data_tra, int n_ant_config, int n_pol, int n_chan, int n_samp); // Upchannelization
 float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag); // Run upchannelizer and beamformer

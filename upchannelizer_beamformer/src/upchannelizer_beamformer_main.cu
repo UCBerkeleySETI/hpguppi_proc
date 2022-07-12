@@ -297,11 +297,17 @@ int main(int argc, char **argv) {
 
 	// Generate simulated data
 	signed char* sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag);
-        printf("Simulated data \n");
+    printf("Simulated data \n");
+
+	// Register the array in pinned memory to speed HtoD mem copy
+	input_data_pin(sim_data, telescope_flag);
 
 	// Generate simulated weights or coefficients
 	float* sim_coefficients = simulate_coefficients_ubf(n_sim_ant, n_ant_config, n_pol, n_beam, n_chan, sim_coef_flag, telescope_flag);
 	printf("Simulated coefficients \n");
+
+	// Register the array in pinned memory to speed HtoD mem copy
+	coeff_pin(sim_coefficients, telescope_flag);
 
 	// --------------------- Input data test --------------------- //
 	int input_write = 0; // If input_write is set to 1, the simulated data will be written to a binary file for testing/verification
@@ -330,7 +336,7 @@ int main(int argc, char **argv) {
 
 	float time_taken = 0;
 	float bf_time = 0;
-	int num_runs = 1;
+	int num_runs = 2;
 
 	// Start timing FFT computation //
 	struct timespec tval_before, tval_after;
@@ -350,6 +356,7 @@ int main(int argc, char **argv) {
 		time_taken = (float)(tval_after.tv_sec - tval_before.tv_sec); //*1e6; // Time in seconds since epoch
 		time_taken = time_taken + (float)(tval_after.tv_nsec - tval_before.tv_nsec)*1e-9; // Time in nanoseconds since 'tv_sec - start and end'
 		bf_time += time_taken;
+		printf("FFT and beamform processing time: %f s, iteration: %d \n", time_taken, ii);
 	}
 	printf("Average FFT and beamform processing time: %f s\n", bf_time/num_runs);
 
@@ -360,7 +367,8 @@ int main(int argc, char **argv) {
 
 	output_file = fopen(output_filename, "wb");
 
-	fwrite(output_data, sizeof(float), n_beam*n_chan*n_samp*n_sti, output_file);
+    // Add 1 for the incoherent beam
+	fwrite(output_data, sizeof(float), (n_beam+1)*n_chan*n_samp*n_sti, output_file);
 
 	fclose(output_file);
 

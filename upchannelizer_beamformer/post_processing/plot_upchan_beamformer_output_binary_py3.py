@@ -23,7 +23,7 @@ N_fine = 1024
 # Array dimensions
 # MeerKAT specs
 if telescope_flag == "MK":
-    N_beam = 61
+    N_beam = (61 + 1) # Including ncoherent beam
     N_time = 1
     # 1k mode
     if mode_flag == "1k":
@@ -46,10 +46,10 @@ if telescope_flag == "VLA":
     if mode_flag == "req":
         N_time = 40 # STI windows
         N_fine = 128000
-        N_beam = 5 # 64
+        N_beam = (5 + 1) # Including ncoherent beam # 64
     # Desired
     if mode_flag == "des":
-        N_beam = 31 # 64
+        N_beam = (31 + 1) # Including ncoherent beam # 64
         # Number of points of the FFT
         if N_fine == 5120000:
             N_time = 2 # STI windows
@@ -58,6 +58,7 @@ if telescope_flag == "VLA":
         if N_fine == 1024:
             N_time = 10000 # STI windows
 
+incoherent_beam_idx = N_beam-1
 N_elements = int(N_time*N_coarse*N_fine*N_beam)
 
 #define pow_bf_idx(f, c, s, b, Nf, Nc, Ns)
@@ -89,6 +90,13 @@ plt.xlabel('Frequency bins')
 plt.ylabel('Power (arb.)')
 plt.show()
 
+# Plot of power spectrum of incoherent beam
+plt.plot(contents_array[incoherent_beam_idx,time_idx,0:int(N_coarse*N_fine)])
+plt.title('Power spectrum of Incoehrent beam')
+plt.xlabel('Frequency bins')
+plt.ylabel('Power (arb.)')
+plt.show()
+
 fig, axs = plt.subplots(2, 2)
 fig.suptitle('Power spectra of individual beams')
 axs[0, 0].plot(contents_array[0,time_idx,0:int(N_coarse*N_fine)])
@@ -97,8 +105,8 @@ axs[0, 1].plot(contents_array[1,time_idx,0:int(N_coarse*N_fine)], 'tab:orange')
 axs[0, 1].set_title('Beam 2')
 axs[1, 0].plot(contents_array[2,time_idx,0:int(N_coarse*N_fine)], 'tab:green')
 axs[1, 0].set_title('Beam 3')
-axs[1, 1].plot(contents_array[3,time_idx,0:int(N_coarse*N_fine)], 'tab:red')
-axs[1, 1].set_title('Beam 4')
+axs[1, 1].plot(contents_array[incoherent_beam_idx,time_idx,0:int(N_coarse*N_fine)], 'tab:red')
+axs[1, 1].set_title('Incoherent Beam')
 
 # set the spacing between subplots
 plt.subplots_adjust(left=0.1,
@@ -133,8 +141,8 @@ if N_time > 1:
     axs[0, 1].set_title('Beam 2')
     axs[1, 0].plot(contents_array[2,0:N_time,freq_idx], 'tab:green')
     axs[1, 0].set_title('Beam 3')
-    axs[1, 1].plot(contents_array[3,0:N_time,freq_idx], 'tab:red')
-    axs[1, 1].set_title('Beam 33')
+    axs[1, 1].plot(contents_array[incoherent_beam_idx,0:N_time,freq_idx], 'tab:red')
+    axs[1, 1].set_title('Incoherent beam')
 
     # set the spacing between subplots
     plt.subplots_adjust(left=0.1,
