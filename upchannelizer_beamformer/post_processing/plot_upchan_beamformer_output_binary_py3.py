@@ -18,7 +18,7 @@ print(contents_float[0])
 
 telescope_flag = "VLA"
 mode_flag = "req"
-N_fine = 1024
+N_fine = 1253376 #5120000
 
 # Array dimensions
 # MeerKAT specs
@@ -44,8 +44,8 @@ if telescope_flag == "VLA":
     N_coarse = 1
     # Required
     if mode_flag == "req":
-        N_time = 40 # STI windows
-        N_fine = 128000
+        N_time = 32 #40 # STI windows
+        N_fine = 156672 #128000
         N_beam = (5 + 1) # Including ncoherent beam # 64
     # Desired
     if mode_flag == "des":
@@ -53,6 +53,8 @@ if telescope_flag == "VLA":
         # Number of points of the FFT
         if N_fine == 5120000:
             N_time = 2 # STI windows
+        if N_fine == 1253376:
+            N_time = 4 # STI windows
         if N_fine == 128000:
             N_time = 80 # STI windows
         if N_fine == 1024:
