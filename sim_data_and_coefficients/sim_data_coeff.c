@@ -229,17 +229,17 @@ float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 }
 
 int main(int argc, char **argv) {
-	if((argc > 9) || (argc < 2)) {
+	if((argc > 10) || (argc < 2)) {
 		printf("The minimum requirement is to set the output file as the first argument. Enter -h or --help option for information on how to run this program. \n");
 		return -1;
 	}
-	if(argc > 6){
+	if(argc > 7){
 		printf("Number of beams, polarizations and/or antennas have been chosen.\n");
 	}
 
 	if((strcmp(argv[1], "-h") == 0) || (strcmp(argv[1], "--help") == 0)){
 		printf("To execute this program enter the following command:\n");
-		printf("    ./upchannelizer_beamformer_main <output file> <simulated data flag> <simulated coefficients flag> <telescope flag> <mode flag or VLASS specifications depending on telescope flag>\n");
+		printf("    ./sim_data_coeff <simulated data file name> <coefficient file name> <simulated data flag> <simulated coefficients flag> <telescope flag> <mode flag or VLASS specifications depending on telescope flag>\n");
 		printf("    <> are not used in the command, but are just used to indicate arguments in this description\n");
 		printf("Descriptions of the arguments in the command above:\n");
 		printf("    <output file> - Enter the binary file along with it's path e.g. /datag/users/mruzinda/o/output_d_fft_bf.bin \n");
@@ -265,10 +265,10 @@ int main(int argc, char **argv) {
 		printf("    If VLA is specified, the next argument should be input as:\n");
 		printf("        required -> Required specifications \n");
 		printf("        desired  -> Desired specifications \n");
-                printf("An example with a specified output file, simulated data flag of <5>, coefficient flag of <4>, telescope flag <MK>, and mode of <4k> is shown below:\n");
-                printf("    ./upchannelizer_beamformer_main /datag/users/mruzinda/o/output_d_fft_bf.bin 5 4 MK 4k\n");
+                printf("An example with a specified simulated data and coefficient files, simulated data flag of <5>, coefficient flag of <4>, telescope flag <MK>, and mode of <4k> is shown below:\n");
+                printf("    ./upchannelizer_beamformer_main /datag/users/mruzinda/i/sim_data.bin /datag/users/mruzinda/i/sim_coeff.bin 5 4 MK 4k\n");
 		printf("If the number beams, polarizations and/or antennas are to be chosen, the following command can be used:\n");
-		printf("    ./upchannelizer_beamformer_main <output file> <simulated data flag> <simulated coefficients flag> <telescope flag> <mode flag or VLASS specifications depending on telescope flag> <number of beams> <number of polarizations> <number of antennas>\n");
+		printf("    ./sim_data_coeff <simulated data file name> <coefficient file name> <simulated data flag> <simulated coefficients flag> <telescope flag> <mode flag or VLASS specifications depending on telescope flag> <number of beams> <number of polarizations> <number of antennas>\n");
 		printf("There are limitations to the values of these 3 additional paramters. The max number of polarizations is 2 in any case. \n");
 		printf("When the telescope is MK, the max number of beams is 64 and antennas is 64. \n");
 		printf("When the telescope is VLA, the max number of beams is 32 and antennas is 32. \n");
