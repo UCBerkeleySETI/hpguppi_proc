@@ -220,7 +220,7 @@ static void *run(hashpipe_thread_args_t * args)
   double coarse_chan_freq[N_FREQ]; // Coarse channel center frequencies in the band 
   int n_chan_per_node = 0; // Number of coarse channels per compute node
   int n_coarse_proc = 0; // Number of coarse channels processed at a time
-  int half_n_coarse_proc = 0; // Half of the number of coarse channels processed at a time
+  //int half_n_coarse_proc = 0; // Half of the number of coarse channels processed at a time
   int n_subband = 16; // Number of subbands
   double fch1 = 0; // Center frequency of the first coarse channel
   double fch1_sb = 0; // Center frequency of the first coarse channel of a subband
