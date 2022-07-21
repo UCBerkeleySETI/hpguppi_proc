@@ -220,9 +220,11 @@ static void *run(hashpipe_thread_args_t * args)
   double coarse_chan_freq[N_FREQ]; // Coarse channel center frequencies in the band 
   int n_chan_per_node = 0; // Number of coarse channels per compute node
   int n_coarse_proc = 0; // Number of coarse channels processed at a time
-  //int half_n_coarse_proc = 0; // Half of the number of coarse channels processed at a time
+  int half_n_coarse_proc = 0; // Half of the number of coarse channels processed at a time
   int n_subband = 16; // Number of subbands
-  //double center_freq = 0; // Center frequency of the subband and currently the filterbank file
+  double fch1 = 0; // Center frequency of the first coarse channel of a subband
+  double center_freq = 0; // Center frequency of the subband and currently the filterbank file
+  double sb_obsbw = 0; // Subband bandwidth
   int n_samp_per_rawblk = 0; // Number of time samples in a RAW block used to calculate pktidx_time which is the approximate unix time at a given PKTIDX
   int n_ant_config = 0;
 
@@ -720,20 +722,24 @@ static void *run(hashpipe_thread_args_t * args)
     	posix_fadvise(fdraw[b], 0, 0, POSIX_FADV_DONTNEED);
       }
 
-      /*
-      // Get center frequency depending on mode (1k, 4k or 32k)
+      
+      // Get center frequency of subband depending on mode (1k, 4k or 32k)
       if(n_coarse_proc == 1){
         center_freq = coarse_chan_freq[0]*1e3;
       }else{
         half_n_coarse_proc = (n_coarse_proc/2);
         center_freq = ((coarse_chan_freq[half_n_coarse_proc-1]+coarse_chan_freq[half_n_coarse_proc])/2)*1e3;
       }
-      */
+      
+      // Get center frequency of the first coarse channel of a subband
+      sb_obsbw = chan_bw*n_coarse_proc;
+      fch1 = center_freq - (((n_coarse_proc -1)/2) - floor(n_fft/2)/(n_fft*n_coarse_proc))*sb_obsbw;
+
       // Filterbank header values for now
       fb_hdr.telescope_id = 64; // MeerKAT ID (Don't know why it's 64, maybe associated with the number of antennas)
       fb_hdr.foff = chan_bw/n_fft; // Filterbank channel bandwidth in MHz
       fb_hdr.nchans = n_coarse_proc*n_fft; // Number of channels in a filterbank file
-      fb_hdr.fch1 = coarse_chan_freq[0]*1e3; // Center frequency in MHz of the first coarse channel in the subband
+      fb_hdr.fch1 = fch1; // Center frequency in MHz of the first coarse channel in the subband
       fb_hdr.tsamp = tbin*n_fft*n_time_int; // Time interval between output samples
       fb_hdr.tstart = stt_imjd + stt_smjd/86400.0; // tstart for now
       // Write RAW filename to filterbank header
