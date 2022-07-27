@@ -388,6 +388,12 @@ static void *run(hashpipe_thread_args_t * args)
     hgets(st->buf, "OUTDIR", sizeof(outdir), outdir);
     hashpipe_status_unlock_safe(st);
 
+    // Make output directory if it doesn't exist
+    struct stat st_outdir = {0};
+    if (stat(outdir, &st_outdir) == -1) {
+      mkdir(outdir, 0777);
+    }
+
     // If the subarray configuration is in use (half the number of antennas)
     if(nants <= N_ANT/2){
       n_ant_config = N_ANT/2;

@@ -74,3 +74,6 @@ typedef struct complex_t{
 	float re;
 	float im;
 }complex_t;
+
+signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag);
+float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam, int n_chan, int sim_flag, int telescope_flag);
