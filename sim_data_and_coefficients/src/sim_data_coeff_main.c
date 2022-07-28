@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 	else if (argc == 4)
 	{
 		sim_data_flag = atoi(argv[3]);
-		if (sim_data_flag < 0 || sim_data_flag > 5)
+		if (sim_data_flag < 0 || sim_data_flag > 6)
 		{
 			printf("sim_data_flag is out of bounds i.e. this option doesn't exist. The flag has been set to 5, the default. \n");
 			sim_data_flag = 5;
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 	{
 		sim_data_flag = atoi(argv[3]);
 		sim_coef_flag = atoi(argv[4]);
-		if (sim_data_flag < 0 || sim_data_flag > 5)
+		if (sim_data_flag < 0 || sim_data_flag > 6)
 		{
 			printf("sim_data_flag is out of bounds i.e. this option doesn't exist. The flag has been set to 5, the default. \n");
 			sim_data_flag = 5;

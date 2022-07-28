@@ -46,11 +46,11 @@ coeff = np.zeros(N_coarse*N_beam*N_pol*N_ant).reshape(N_coarse,N_beam,N_pol,N_an
 coeff_tmp = contents_coeff[0:(N_coarse*N_beam*N_pol*N_ant*N_iq)].reshape(N_coarse,N_beam,N_pol,N_ant,N_iq)
 coeff = coeff_tmp[:,:,:,:,0] + 1j*coeff_tmp[:,:,:,:,1]
 
-N_fine_offset = N_fine-2
+N_fine_offset = N_fine-1
 N_fine_half = (int)(N_fine/2)
-X_tmp = np.zeros(N_fine)
-X_first = np.zeros(N_fine_offset)
-X = np.zeros(N_win*N_pol*N_ant*N_coarse*(N_fine_offset)).reshape(N_win,N_pol,N_ant,N_coarse*(N_fine_offset))
+X_tmp = np.zeros(N_fine) + 1j*np.zeros(N_fine)
+X_first = np.zeros(N_fine_offset) + 1j*np.zeros(N_fine_offset)
+X = np.zeros(N_win*N_pol*N_ant*N_coarse*(N_fine_offset)).reshape(N_win,N_pol,N_ant,N_coarse*(N_fine_offset)) + 1j*np.zeros(N_win*N_pol*N_ant*N_coarse*(N_fine_offset)).reshape(N_win,N_pol,N_ant,N_coarse*(N_fine_offset))
 
 # Combine coarse and fine channels
 for c in range(0,N_coarse):
@@ -59,7 +59,7 @@ for c in range(0,N_coarse):
             for a in range(0,N_ant):
                 # FFT
                 X_tmp = fft(x[c,a,w,0:N_time,p,0] + 1j*x[c,a,w,0:N_time,p,1])
-                X_first = np.concatenate((X_tmp[0:130], X_tmp[132:(N_fine_half+1)]), axis=None)
+                X_first = X_tmp[1:(N_fine_half+1)] # np.concatenate((X_tmp[0:130], X_tmp[132:(N_fine_half+1)]), axis=None)
                 X[w,p,a,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = np.concatenate((X_tmp[(N_fine_half+1):(N_fine)], X_first), axis=None)
                 # FFT shift
                 #X[w,p,a,(c*(N_fine)):((N_fine)+c*(N_fine))] = np.concatenate((X_tmp[(N_fine_half+1):(N_fine)],X_tmp[0:(N_fine_half+1)]), axis=None)
@@ -68,8 +68,8 @@ for c in range(0,N_coarse):
 # Beamform, convert to power and integrate over time samples
 # coh_bf_idx(p, b, f, c, w, Np, Nb, Nc, Nf)
 # pow_bf_idx(f, c, s, b, Nf, Nc, Ns)
-x_pol = np.zeros(N_coarse*(N_fine_offset))
-y_pol = np.zeros(N_coarse*(N_fine_offset))
+x_pol = np.zeros(N_coarse*(N_fine_offset)) + 1j*np.zeros(N_coarse*(N_fine_offset))
+y_pol = np.zeros(N_coarse*(N_fine_offset)) + 1j*np.zeros(N_coarse*(N_fine_offset))
 bf_pow = np.zeros(N_win*N_coarse*(N_fine_offset)).reshape(N_win, N_coarse*(N_fine_offset))
 bf_no_sti = np.zeros(N_beam*N_win*N_coarse*(N_fine_offset)).reshape(N_beam, N_win, N_coarse*(N_fine_offset))
 bf_sti = np.zeros(N_beam*N_coarse*(N_fine_offset)).reshape(N_beam, N_coarse*(N_fine_offset))
@@ -79,11 +79,11 @@ for c in range(0,N_coarse):
         for w in range(0,N_win):
             x_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = np.dot(coeff[c,b,0,:],X[w,0,:,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))])
             y_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = np.dot(coeff[c,b,1,:],X[w,1,:,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))])
-            bf_pow[w,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = np.square(x_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))]) + np.square(y_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))])
-            bf_no_sti[b,w,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = np.square(x_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))]) + np.square(y_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))])
+            bf_pow[w,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = abs(np.square(x_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))]) + np.square(y_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))]))
+            bf_no_sti[b,w,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = abs(np.square(x_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))]) + np.square(y_pol[(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))]))
 
 
-        bf_sti[b,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = np.sum(bf_pow[:,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))], axis=0)
+        bf_sti[b,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))] = abs(np.sum(bf_pow[:,(c*(N_fine_offset)):((N_fine_offset)+c*(N_fine_offset))], axis=0))
 
 print("After for loops")
 
@@ -96,7 +96,7 @@ coarse_idx = 0 # coarse channel index to plot
 # I'm only removing it for the sake of accurate analysis and diagnosis.
 #plt.imshow(contents_array[0:N_win,0:N_coarse,beam_idx], extent=[1, N_coarse, 1, N_win], aspect='auto', interpolation='bicubic')
 #plt.imshow(contents_array[coarse_idx,0:N_win,pol_idx,ant_idx,0:N_fine,iq_idx], extent=[1, N_fine, 1, N_win], aspect='auto', interpolation='none')
-plt.imshow(X[0:N_win,pol_idx,ant_idx,0:N_coarse*(N_fine_offset)], extent=[1, N_coarse*(N_fine_offset), 1, N_win], aspect='auto', interpolation='none')
+plt.imshow(abs(X[0:N_win,pol_idx,ant_idx,0:N_coarse*(N_fine_offset)]), extent=[1, N_coarse*(N_fine_offset), 1, N_win], aspect='auto', interpolation='none')
 plt.title('FFT Waterfall plot, antenna 0 (Frequency vs. time)')
 plt.ylabel('Time samples')
 plt.xlabel('Fine frequency channels')
@@ -104,7 +104,7 @@ plt.show()
 
 # Plot of power spectrum
 #plt.plot(contents_array[coarse_idx,time_idx,pol_idx,ant_idx,0:N_fine,iq_idx])
-plt.plot(X[time_idx,pol_idx,ant_idx,0:N_coarse*(N_fine_offset)])
+plt.plot(abs(X[time_idx,pol_idx,ant_idx,0:N_coarse*(N_fine_offset)]))
 plt.title('FFT at a time window')
 plt.xlabel('Fine frequency channels')
 plt.ylabel('Raw voltage (arb.)')
@@ -112,13 +112,13 @@ plt.show()
 
 fig, axs = plt.subplots(2, 2)
 fig.suptitle('FFT at different antennas')
-axs[0, 0].plot(X[time_idx,pol_idx,0,0:N_coarse*(N_fine_offset)])
+axs[0, 0].plot(abs(X[time_idx,pol_idx,0,0:N_coarse*(N_fine_offset)]))
 axs[0, 0].set_title('Ant 1')
-axs[0, 1].plot(X[time_idx,pol_idx,1,0:N_coarse*(N_fine_offset)], 'tab:orange')
+axs[0, 1].plot(abs(X[time_idx,pol_idx,1,0:N_coarse*(N_fine_offset)]), 'tab:orange')
 axs[0, 1].set_title('Ant 2')
-axs[1, 0].plot(X[time_idx,pol_idx,2,0:N_coarse*(N_fine_offset)], 'tab:green')
+axs[1, 0].plot(abs(X[time_idx,pol_idx,2,0:N_coarse*(N_fine_offset)]), 'tab:green')
 axs[1, 0].set_title('Ant 3')
-axs[1, 1].plot(X[time_idx,pol_idx,57,0:N_coarse*(N_fine_offset)], 'tab:red')
+axs[1, 1].plot(abs(X[time_idx,pol_idx,57,0:N_coarse*(N_fine_offset)]), 'tab:red')
 axs[1, 1].set_title('Ant 57')
 
 # set the spacing between subplots
@@ -138,7 +138,7 @@ for ax in axs.flat:
 plt.show()
 
 plt.imshow(bf_no_sti[2, :,:], extent=[1, N_coarse*(N_fine_offset), 1, N_win], aspect='auto', interpolation='none')
-plt.title('Power spectrum at different beams')
+plt.title('Power spectrum at different time samples')
 plt.ylabel('Time sample index')
 plt.xlabel('Fine frequency channels')
 plt.show()

@@ -154,15 +154,18 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 	}
 	if (sim_flag == 6)
 	{
+		printf("Sim flag 6\n");
 		float freq = 1e9; // Resonant frequency
 		//float shift_freq = 0; // Shifting frequency depending on time sample
 		float sig_shift = 0;
 		float tmp_max = 1.0;
 		float tmp_min = -1.0;
+		int freq_band_shift = 10000;
 
 		for (int w = 0; w < n_win; w++)
 		{
-			for (int t = (524285); t < (nt - (524285)); t++)
+			for (int t = freq_band_shift; t < (nt - freq_band_shift); t++)
+			//for (int t = 0; t < nt; t++)
 			{
 				for (int f = 0; f < n_chan; f++)
 				{
@@ -171,15 +174,15 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 						if (a < n_sim_ant)
 						{
 							//shift_freq = freq + ((t) - (nt/2));
-							sig_shift = 1050000*w;
+							sig_shift = freq_band_shift*w;
 							// Requantize from doubles/floats to signed chars with a range from -128 to 127
 							// X polarization
-							data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)((((cos(2 * PI * (freq + sig_shift)) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
-							data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)((((sin(2 * PI * (freq + sig_shift)) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+							data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)((((cos(2 * PI * (freq + sig_shift) * t) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+							data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)((((sin(2 * PI * (freq + sig_shift) * t) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
 							// data_sim[2 * data_in_idx(0, f, a, t, 0, n_pol, n_chan, nants, nt) + 1] = 0;
 							//  Y polarization
-							data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)((((2 * cos(2 * PI * (freq + sig_shift)) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
-							data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)((((sin(2 * PI * (freq + sig_shift)) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+							data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)((((2 * cos(2 * PI * (freq + sig_shift) * t) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+							data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)((((sin(2 * PI * (freq + sig_shift) * t) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
 							// data_sim[2 * data_in_idx(1, f, a, t, 0, n_pol, n_chan, nants, nt) + 1] = 0;
 						}
 					}
