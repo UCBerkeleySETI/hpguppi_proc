@@ -173,8 +173,7 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 					{
 						if (a < n_sim_ant)
 						{
-							//shift_freq = freq + ((t) - (nt/2));
-							sig_shift = freq_band_shift*w;
+							sig_shift = freq_band_shift*(((float)t/nt) + w);
 							// Requantize from doubles/floats to signed chars with a range from -128 to 127
 							// X polarization
 							data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)((((cos(2 * PI * (freq + sig_shift) * t) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);

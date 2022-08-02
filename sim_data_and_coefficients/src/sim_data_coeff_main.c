@@ -219,14 +219,14 @@ int main(int argc, char **argv)
 				n_chan = 1;
 				nt = 2 * 4096 * 1024; // 4194304; // 2^22
 				freq_band_shift = 10000;
-				rect_zero_samps = freq_band_shift;
+				rect_zero_samps = freq_band_shift; // This just happens to workout, but it doesn't have to be this value
 			}						  // 4k mode
 			else if (strcmp(mode_flag, "4k") == 0)
 			{
 				n_chan = 4;			  // 64
 				nt = 2 * 1024 * 1024; // 1048576; // 2^20
 				freq_band_shift = 10000;
-				rect_zero_samps = freq_band_shift;
+				rect_zero_samps = freq_band_shift; // This just happens to workout, but it doesn't have to be this value
 			}						  // 32k mode
 			else if (strcmp(mode_flag, "32k") == 0)
 			{
@@ -248,16 +248,16 @@ int main(int argc, char **argv)
 			{
 				n_chan = 1;
 				nt = 4096 * 1024; // 4194304; // 2^22
-				freq_band_shift = 10000;
-				rect_zero_samps = freq_band_shift; // This just happens to workout, but it doesn't have to be this value
+				freq_band_shift = 3000; //10000;
+				rect_zero_samps = 60000; //freq_band_shift; // This just happens to workout, but it doesn't have to be this value
 			}
 			// 4k mode
 			else if (strcmp(mode_flag, "4k") == 0)
 			{
 				n_chan = 4;		  // 64
 				nt = 1024 * 1024; // 1048576; // 2^20
-				freq_band_shift = 10000;
-				rect_zero_samps = freq_band_shift; // This just happens to workout, but it doesn't have to be this value
+				freq_band_shift = 30000;
+				rect_zero_samps = 50000; // This just happens to workout, but it doesn't have to be this value
 			}
 			// 32k mode
 			else if (strcmp(mode_flag, "32k") == 0)
@@ -289,8 +289,8 @@ int main(int argc, char **argv)
 			nt = 5013504; // 5120000;
 			n_win = 32;	  // 40
 			n_time_int = 1;
-			freq_band_shift = 10000;
-			rect_zero_samps = freq_band_shift;
+			freq_band_shift = 3000; //10000;
+			rect_zero_samps = 60000; // freq_band_shift;
 		} // Desired Specification
 		else if (spec_flag == 1)
 		{
@@ -327,8 +327,8 @@ int main(int argc, char **argv)
 			nt = 5013504; // 10240000; // 5120000
 			n_win = 4;	  // 10000; // 2, 80, 10000
 			n_time_int = 1;
-			freq_band_shift = 10000;
-			rect_zero_samps = freq_band_shift;
+			freq_band_shift = 5000;
+			rect_zero_samps = 500000;// freq_band_shift;
 		}
 	}
 	// -----------------------------------------------//
@@ -345,6 +345,8 @@ int main(int argc, char **argv)
 	printf("n_fft  = %d (Number of points in FFT)\n", n_samp);
 	printf("n_win  = %d (Number of spectral windows after FFT)\n", n_win);
 	printf("n_int  = %d (Number of integrated windows)\n", n_time_int);
+	printf("freq_band_shift  = %f (Frequency offset per spectral window)\n", freq_band_shift);
+	printf("rect_zero_samps  = %f (Number of time samples that are zero on either side of simulated rect)\n", rect_zero_samps);
 
 	// Generate simulated data
 	signed char *sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag, rect_zero_samps, freq_band_shift);
