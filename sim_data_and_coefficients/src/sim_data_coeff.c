@@ -9,7 +9,7 @@
 #include "sim_data_coeff.h"
 
 // Generate simulated data
-signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag)
+signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift)
 {
 	int n_input = 0;
 	int n_ant_config = 0;
@@ -160,11 +160,11 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 		float sig_shift = 0;
 		float tmp_max = 1.0;
 		float tmp_min = -1.0;
-		int freq_band_shift = 10000;
+		//int freq_band_shift = 10000;
 
 		for (int w = 0; w < n_win; w++)
 		{
-			for (int t = freq_band_shift; t < (nt - freq_band_shift); t++)
+			for (int t = rect_zero_samps; t < (nt - rect_zero_samps); t++)
 			//for (int t = 0; t < nt; t++)
 			{
 				for (int f = 0; f < n_chan; f++)

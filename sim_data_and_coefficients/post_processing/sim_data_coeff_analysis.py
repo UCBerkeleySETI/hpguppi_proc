@@ -17,22 +17,49 @@ contents_coeff = np.fromfile(coeff_filename, dtype=np.float32)
 print(len(contents_data))
 print(contents_data[0])
 
-# Array dimensions
-N_pol = 2
-N_win = 8
-N_ant = 64 
-N_iq = 2
-N_beam = 61
+telescope_flag = "VLA" #"MK"
+mode_flag = "des"
 
-# 1k mode
-#N_time = (int)((4096*1024)/N_win) # 2^19
-#N_coarse = 1 # 4
-# 4k mode
-N_time = (int)((1024*1024)/N_win) # 2^17 
-N_coarse = 4 # 4
-# 32k mode
-#N_time = (int)((128*1024)/N_win) # 2^14
-#N_coarse = 32 # 4
+if telescope_flag == "MK":
+    # Array dimensions
+    N_pol = 2
+    N_win = 8
+    N_ant = 64 
+    N_iq = 2
+    N_beam = 61
+
+    # 1k mode
+    if mode_flag == "1k":
+        N_time = (int)((4096*1024)/N_win) # 2^19
+        N_coarse = 1 # 4
+    # 4k mode
+    if mode_flag == "4k":
+        N_time = (int)((1024*1024)/N_win) # 2^17 
+        N_coarse = 4 # 4
+    # 32k mode
+    if mode_flag == "32k":
+        N_time = (int)((128*1024)/N_win) # 2^14
+        N_coarse = 32 # 4
+
+if telescope_flag == "VLA":
+    # Array dimensions
+    N_pol = 2
+    N_ant = 32 
+    N_iq = 2
+
+    # 1k mode
+    if mode_flag == "req":
+        N_win = 32
+        N_beam = 5
+        N_time = (int)((5013504)/N_win) # 2^19
+        N_coarse = 1 # 4
+    # 4k mode
+    if mode_flag == "des":
+        N_win = 4
+        N_beam = 31
+        N_time = (int)((5013504)/N_win) # 2^19
+        N_coarse = 1 # 4
+
 
 N_fine = N_time
 
@@ -118,7 +145,7 @@ axs[0, 1].plot(abs(X[time_idx,pol_idx,1,0:N_coarse*(N_fine_offset)]), 'tab:orang
 axs[0, 1].set_title('Ant 2')
 axs[1, 0].plot(abs(X[time_idx,pol_idx,2,0:N_coarse*(N_fine_offset)]), 'tab:green')
 axs[1, 0].set_title('Ant 3')
-axs[1, 1].plot(abs(X[time_idx,pol_idx,57,0:N_coarse*(N_fine_offset)]), 'tab:red')
+axs[1, 1].plot(abs(X[time_idx,pol_idx,26,0:N_coarse*(N_fine_offset)]), 'tab:red')
 axs[1, 1].set_title('Ant 57')
 
 # set the spacing between subplots

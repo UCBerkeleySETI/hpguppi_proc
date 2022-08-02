@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 		printf("        sim_data = 3 -> Rect placed in a particular bin at a particular antenna (bin 3 and antenna 3 for now)\n");
 		printf("        sim_data = 4 -> Simulated cosine wave\n");
 		printf("        sim_data = 5 -> Simulated complex exponential i.e. exp(j*2*pi*f0*t)\n");
-		printf("        sim_data = 6 -> Simulated drifting signal or complex exponential i.e. exp(j*2*pi*f0*t)\n");
+		printf("        sim_data = 6 -> Simulated drifting signal that simulates ETI given a particular observatory and mode\n");
 		printf("    <simulated coefficients flag> - Enter the flag for the kind of simulated coefficients that you would like to use. Default is 0. The following are the options:\n");
 		printf("        sim_coef = 0 -> Ones (Default)\n");
 		printf("        sim_coef = 1 -> Scale each beam by incrementing value i.e. beam 1 = 1, beam 2 = 2, ..., beam 64 = 64\n");
@@ -51,12 +51,13 @@ int main(int argc, char **argv)
 		printf("        required -> Required specifications \n");
 		printf("        desired  -> Desired specifications \n");
 		printf("An example with a specified simulated data and coefficient files, simulated data flag of <5>, coefficient flag of <4>, telescope flag <MK>, and mode of <4k> is shown below:\n");
-		printf("    ./sim_data_coeff /datag/users/mruzinda/i/sim_data.bin /datag/users/mruzinda/i/sim_coeff.bin 5 4 MK 4k\n");
+		printf("    ./sim_data_coeff /datag/users/mruzinda/i/sim_data.bin /datag/users/mruzinda/i/sim_coeff.bin 6 4 MK 4k\n");
 		printf("If the number beams, polarizations and/or antennas are to be chosen, the following command can be used:\n");
 		printf("    ./sim_data_coeff <simulated data file name> <coefficient file name> <simulated data flag> <simulated coefficients flag> <telescope flag> <mode flag or VLASS specifications depending on telescope flag> <number of beams> <number of polarizations> <number of antennas>\n");
 		printf("There are limitations to the values of these 3 additional paramters. The max number of polarizations is 2 in any case. \n");
 		printf("When the telescope is MK, the max number of beams is 64 and antennas is 64. \n");
 		printf("When the telescope is VLA, the max number of beams is 32 and antennas is 32. \n");
+		printf("To test the SETI search pipeline, simulated data flag 6 along with coefficient flag 0 or 4 will work best. \n");
 
 		return 0;
 	}
@@ -172,6 +173,8 @@ int main(int argc, char **argv)
 	int n_time_int = 0;
 	int n_input = 0;
 	int n_coeff = 0;
+	float rect_zero_samps = 0;
+	float freq_band_shift = 0;
 
 	// ---------------- MeerKAT specs --------------- //
 	if (telescope_flag == 0)
@@ -215,16 +218,22 @@ int main(int argc, char **argv)
 			{
 				n_chan = 1;
 				nt = 2 * 4096 * 1024; // 4194304; // 2^22
+				freq_band_shift = 10000;
+				rect_zero_samps = freq_band_shift;
 			}						  // 4k mode
 			else if (strcmp(mode_flag, "4k") == 0)
 			{
 				n_chan = 4;			  // 64
 				nt = 2 * 1024 * 1024; // 1048576; // 2^20
+				freq_band_shift = 10000;
+				rect_zero_samps = freq_band_shift;
 			}						  // 32k mode
 			else if (strcmp(mode_flag, "32k") == 0)
 			{
 				n_chan = 32;
 				nt = 2 * 128 * 1024; // 131072; // 2^17
+				freq_band_shift = 100000;
+				rect_zero_samps = 1000;
 			}
 
 			n_win = 16;
@@ -239,16 +248,24 @@ int main(int argc, char **argv)
 			{
 				n_chan = 1;
 				nt = 4096 * 1024; // 4194304; // 2^22
-			}					  // 4k mode
+				freq_band_shift = 10000;
+				rect_zero_samps = freq_band_shift; // This just happens to workout, but it doesn't have to be this value
+			}
+			// 4k mode
 			else if (strcmp(mode_flag, "4k") == 0)
 			{
 				n_chan = 4;		  // 64
 				nt = 1024 * 1024; // 1048576; // 2^20
-			}					  // 32k mode
+				freq_band_shift = 10000;
+				rect_zero_samps = freq_band_shift; // This just happens to workout, but it doesn't have to be this value
+			}
+			// 32k mode
 			else if (strcmp(mode_flag, "32k") == 0)
 			{
 				n_chan = 32;
 				nt = 128 * 1024; // 131072; // 2^17
+				freq_band_shift = 100000;
+				rect_zero_samps = 1000;
 			}
 			n_win = 8;
 			n_time_int = 8;
@@ -272,6 +289,8 @@ int main(int argc, char **argv)
 			nt = 5013504; // 5120000;
 			n_win = 32;	  // 40
 			n_time_int = 1;
+			freq_band_shift = 10000;
+			rect_zero_samps = freq_band_shift;
 		} // Desired Specification
 		else if (spec_flag == 1)
 		{
@@ -308,6 +327,8 @@ int main(int argc, char **argv)
 			nt = 5013504; // 10240000; // 5120000
 			n_win = 4;	  // 10000; // 2, 80, 10000
 			n_time_int = 1;
+			freq_band_shift = 10000;
+			rect_zero_samps = freq_band_shift;
 		}
 	}
 	// -----------------------------------------------//
@@ -326,7 +347,7 @@ int main(int argc, char **argv)
 	printf("n_int  = %d (Number of integrated windows)\n", n_time_int);
 
 	// Generate simulated data
-	signed char *sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag);
+	signed char *sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag, rect_zero_samps, freq_band_shift);
 	printf("Simulated data \n");
 
 	// Generate simulated weights or coefficients
