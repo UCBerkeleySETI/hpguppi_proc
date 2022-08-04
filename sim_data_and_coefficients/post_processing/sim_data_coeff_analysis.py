@@ -18,7 +18,7 @@ print(len(contents_data))
 print(contents_data[0])
 
 telescope_flag = "VLA" #"MK"
-mode_flag = "des"
+mode_flag = "req"
 
 if telescope_flag == "MK":
     # Array dimensions
@@ -164,8 +164,8 @@ for ax in axs.flat:
 #    ax.label_outer()
 plt.show()
 
-plt.imshow(bf_no_sti[2, :,:], extent=[1, N_coarse*(N_fine_offset), 1, N_win], aspect='auto', interpolation='none')
-plt.title('Power spectrum at different time samples')
+plt.imshow(10*np.log(bf_no_sti[2, :,:]), extent=[1, N_coarse*(N_fine_offset), 1, N_win], aspect='auto', interpolation='none')
+plt.title('Power spectrum in dB at different time samples')
 plt.ylabel('Time sample index')
 plt.xlabel('Fine frequency channels')
 plt.show()

@@ -1145,6 +1145,14 @@ void Cleanup_beamformer()
 	{
 		cudaFree(d_data_shift);
 	}
+	if (d_data_incoh_bf != NULL)
+	{
+		cudaFree(d_data_incoh_bf);
+	}
+	if (d_data_bf_sti != NULL)
+	{
+		cudaFree(d_data_bf_sti);
+	}
 	if (d_coeff != NULL)
 	{
 		cudaFree(d_coeff);

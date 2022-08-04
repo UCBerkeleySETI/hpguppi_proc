@@ -259,7 +259,7 @@ static void *run(hashpipe_thread_args_t * args)
 
   // Make all initializations before while loop
   // Initialize beamformer (allocate all memory on the device)
-  init_upchan_beamformer(telescope_flag);
+  //init_upchan_beamformer(telescope_flag);
 
   // Initialize output data array
   float* output_data;
@@ -323,6 +323,8 @@ static void *run(hashpipe_thread_args_t * args)
         free(dec_data);
         dec_data = NULL;
         status = H5Dvlen_reclaim(native_src_type, src_dspace_id, H5P_DEFAULT, src_names_str);
+        // Free GPU memory at the end of a scan
+        Cleanup_beamformer();
         // Reset block_count only at the end of the entire scan
         block_count=0;
       }
@@ -421,6 +423,12 @@ static void *run(hashpipe_thread_args_t * args)
     // Get HDF5 file data at the beginning of the processing
     // This if statement also only does processing per subband (so only the first block of the subband)
     if(strcmp(prev_basefilename, raw_basefilename) != 0 || subband_idx != prev_subband_idx){
+      // Initialize memory at the beginning of a scan (the basefilename should change with each scan)
+      if(subband_idx == 0){
+        // Initialize beamformer (allocate all memory on the device)
+        init_upchan_beamformer(telescope_flag);
+      }
+      
       strcpy(prev_basefilename, raw_basefilename);
       prev_subband_idx = subband_idx;
 
