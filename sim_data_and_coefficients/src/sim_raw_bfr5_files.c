@@ -11,7 +11,7 @@
 #include "sim_data_coeff.h"
 #define REC_SIZE 80
 
-#define BASEFILE "guppi_raw_bfr5_test_srcname_JBLAH-BLAH_NUM"
+#define BASEFILE "guppi_raw_bfr5_test_srcname_JBLAH-BLAH_0000"
 
 int main(int argc, char **argv)
 {
@@ -373,157 +373,275 @@ int main(int argc, char **argv)
 
 	}
 
+	int char_str_len = 0;
+
 	for (int b = 0; b < n_blocks; b++)
 	{
-		strcpy(backend, "BACKEND = 'GUPPI'                                                               ");
+		sprintf(backend, "%-80s", "BACKEND = 'GUPPI'");
 		fwrite(backend, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(instance,"INSTANCE= 0                                                                     ");
+		sprintf(instance, "%-80s", "INSTANCE= 0");
 		fwrite(instance, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(raw_obsid,"'MK-obsid'                                                                     ");
+		sprintf(raw_obsid, "%-80s", "OBSID   = 'MK-obsid'");
 		fwrite(raw_obsid, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(bindhost, "BINDHOST= 'eth4'                                                               ");
+		sprintf(bindhost, "%-80s", "BINDHOST= 'eth4'");
 		fwrite(bindhost, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(bindport, "BINDPORT= 7148                                                                 ");
+		sprintf(bindport, "%-80s", "BINDPORT= 7148");
 		fwrite(bindport, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(datadir, "DATADIR = '/datag/users/mruzinda/i'                                             ");
+		sprintf(datadir, "%-80s", "DATADIR = '/datag/users/mruzinda/i'");
 		fwrite(datadir, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(destip, "DESTIP  = '239.9.0.192+3'                                                        ");
+		sprintf(destip, "%-80s", "DESTIP  = '239.9.0.192+3'");
 		fwrite(destip, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf
 		sprintf(chan_bw, "CHAN_BW = %.9f                                                           ", coarse_chan_bw);
-		// strcpy(chan_bw, "CHAN_BW = 0.208984375                                                           ");
 		fwrite(chan_bw, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf
-		sprintf(obsbw,   "OBSBW   = %.9f                                                           ", node_bw);
-		// strcpy(obsbw,   "OBSBW   = 13.375                                                                ");
+		sprintf(obsbw,   "OBSBW   = %.9f                                                          ", node_bw);
 		fwrite(obsbw, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(obsfreq, "OBSFREQ = 1504.5830078125                                                       ");
+		sprintf(obsfreq, "%-80s", "OBSFREQ = 1504.5830078125");
 		fwrite(obsfreq, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(hclocks, "HCLOCKS = 2097125                                                               ");
+		sprintf(hclocks, "%-80s", "HCLOCKS = 2097125");
 		fwrite(hclocks, sizeof(char), REC_SIZE, input_file);
 
 		sprintf(tbin,    "TBIN    = %.9f                                                           ", tbin_num);
-		// strcpy(tbin,    "TBIN    = 4.7850467289719627e-06                                                ");
 		fwrite(tbin, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf
-		strcpy(pktstart,"PKTSTART= 0                                                                     ");
+		sprintf(pktstart, "%-80s", "PKTSTART= 0");
 		fwrite(pktstart, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(netstat, "NETSTAT = 'receiving'                                                           ");
+		sprintf(netstat, "%-80s", "NETSTAT = 'receiving'");
 		fwrite(netstat, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(daqstate,"DAQSTATE= 'RECORD'                                                              ");
+		sprintf(daqstate, "%-80s", "DAQSTATE= 'RECORD'");
 		fwrite(daqstate, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf
 		sprintf(blocsize,"BLOCSIZE= %11d                                                           ", blksize);
-		// strcpy(blocsize,"BLOCSIZE= 121634816                                                             ");
 		fwrite(blocsize, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(directio,"DIRECTIO= 1                                                                     ");
+		sprintf(directio, "%-80s", "DIRECTIO= 1");
 		fwrite(directio, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(nbits,   "NBITS   = 8                                                                     ");
+		sprintf(nbits, "%-80s", "NBITS   = 8");
 		fwrite(nbits, sizeof(char), REC_SIZE, input_file);
 
 		sprintf(npol,    "NPOL    = %11d                                                           ", n_pol);
-		// strcpy(npol,    "NPOL    = 4                                                                     ");
 		fwrite(npol, sizeof(char), REC_SIZE, input_file);
 
 		sprintf(obsnchan,"OBSNCHAN= %11d                                                           ", obsnchan_num);
-		// strcpy(obsnchan,"OBSNCHAN= 3712                                                                  ");
 		fwrite(obsnchan, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(obs_mode,"OBS_MODE= 'RAW'                                                                 ");
+		sprintf(obs_mode, "%-80s", "OBS_MODE= 'RAW'");
 		fwrite(obs_mode, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(diskstat,"DISKSTAT= 'waiting'                                                             ");
+		sprintf(diskstat, "%-80s", "DISKSTAT= 'waiting'");
 		fwrite(diskstat, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(obsinfo_raw, "OBSINFO = 'VALID'                                                               ");
+		sprintf(obsinfo_raw, "%-80s", "OBSINFO = 'VALID'");
 		fwrite(obsinfo_raw, sizeof(char), REC_SIZE, input_file);
 
 		sprintf(fenchan, "FENCHAN = %11d                                                           ", fenchan_num);
-		// strcpy(fenchan, "FENCHAN = 4096                                                                  ");
 		fwrite(fenchan, sizeof(char), REC_SIZE, input_file);
 
 		sprintf(nants,   "NANTS   = %11d                                                           ", n_sim_ant);
-		// strcpy(nants,   "NANTS   = 58                                                                    ");
 		fwrite(nants, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(schan,   "SCHAN   = 0                                                                     ");
+		sprintf(schan, "%-80s", "SCHAN   = 0");
 		fwrite(schan, sizeof(char), REC_SIZE, input_file);
 
 		sprintf(piperblk,"PIPERBLK= %11d                                                           ", piperblk_num);
-		// strcpy(piperblk,"PIPERBLK= 32                                                                    ");
 		fwrite(piperblk, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf?
-		strcpy(synctime,"SYNCTIME= 160328378                                                             ");
-		fwrite(instance, sizeof(char), REC_SIZE, input_file);
+		sprintf(synctime, "%-80s", "SYNCTIME= 160328378");
+		fwrite(synctime, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf
 		sprintf(pktidx,  "PKTIDX  = %11d                                                           ", (b * piperblk_num));
-		// strcpy(pktidx,  "PKTIDX  = 7963744                                                               ");
-		fwrite(instance, sizeof(char), REC_SIZE, input_file);
+		fwrite(pktidx, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(dwell,   "DWELL   = 240                                                                   ");
+		sprintf(dwell, "%-80s", "DWELL   = 240");
 		fwrite(dwell, sizeof(char), REC_SIZE, input_file);
 
-		// sprintf
 		sprintf(pktstop, "PKTSTOP = %11d                                                           ", ((n_blocks * piperblk_num) - 1));
-		// strcpy(pktstop, "PKTSTOP = 8159616                                                               ");
 		fwrite(pktstop, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(az,      "AZ      = 162.23874011012015                                                    ");
+		sprintf(az, "%-80s", "AZ      = 162.23874011012015");
 		fwrite(az, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(ra,      "RA      = 295.3235416666667                                                     ");
+		sprintf(ra, "%-80s", "RA      = 295.3235416666667");
 		fwrite(ra, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(dec,     "DEC     = -57.6811111111109                                                     ");
+		sprintf(dec, "%-80s", "DEC     = -57.6811111111109");
 		fwrite(dec, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(el,      "EL      = 60.887789657970366                                                    ");
+		sprintf(el, "%-80s", "EL      = 60.887789657970366");
 		fwrite(el, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(src_name,"SRC_NAME= 'JBORE-SIGHT'                                                         ");
+		sprintf(src_name, "%-80s", "SRC_NAME= 'JBORE-SIGHT'");
 		fwrite(src_name, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(ra_str,  "RA_STR  = '19:41:17.65'                                                         ");
+		sprintf(ra_str, "%-80s", "RA_STR  = '19:41:17.65'");
 		fwrite(ra_str, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(dec_str, "DEC_STR = '-57:40:05.2'                                                         ");
+		sprintf(dec_str, "%-80s", "DEC_STR = '-57:40:05.2'");
 		fwrite(dec_str, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(sttvalid,"STTVALID= 1                                                                     ");
+		sprintf(sttvalid, "%-80s", "STTVALID= 1");
 		fwrite(sttvalid, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(stt_imjd,"STT_IMJD= 59143                                                                 ");
+		sprintf(stt_imjd, "%-80s", "STT_IMJD= 59143");
 		fwrite(stt_imjd, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(stt_smjd,"STT_SMJD= 55142                                                                 ");
+		sprintf(stt_smjd, "%-80s", "STT_SMJD= 55142");
 		fwrite(stt_smjd, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(stt_offs,"STT_OFFS= 0.32391835500000005                                                   ");
+		sprintf(stt_offs, "%-80s", "STT_OFFS= 0.32391835500000005");
 		fwrite(stt_offs, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(dropstat,"DROPSTAT= '0/118784'                                                            ");
+		sprintf(dropstat, "%-80s", "DROPSTAT= '0/118784'");
 		fwrite(dropstat, sizeof(char), REC_SIZE, input_file);
 
-		strcpy(end,     "END                                                                             ");
+		sprintf(end, "%-80s", "END");
 		fwrite(end, sizeof(char), REC_SIZE, input_file);
+
+		if(b == 0){
+			char_str_len = strlen(backend);
+			printf("Backend string length = %d\n", char_str_len);
+
+			char_str_len = strlen(instance);
+			printf("Instance string length = %d\n", char_str_len);
+
+			char_str_len = strlen(raw_obsid);
+			printf("Obsid string length = %d\n", char_str_len);
+
+			char_str_len = strlen(bindhost);
+			printf("Bindhost string length = %d\n", char_str_len);
+
+			char_str_len = strlen(bindport);
+			printf("Bindport string length = %d\n", char_str_len);
+
+			char_str_len = strlen(datadir);
+			printf("Datadir string length = %d\n", char_str_len);
+
+			char_str_len = strlen(destip);
+			printf("Destip string length = %d\n", char_str_len);
+
+			char_str_len = strlen(chan_bw);
+			printf("Chan_bw string length = %d\n", char_str_len);
+
+			char_str_len = strlen(obsbw);
+			printf("OBSBW string length = %d\n", char_str_len);
+
+			char_str_len = strlen(obsfreq);
+			printf("OBSFREQ string length = %d\n", char_str_len);
+
+			char_str_len = strlen(hclocks);
+			printf("Hclocks string length = %d\n", char_str_len);
+
+			char_str_len = strlen(tbin);
+			printf("tbin string length = %d\n", char_str_len);
+
+			char_str_len = strlen(pktstart);
+			printf("pktstart string length = %d\n", char_str_len);
+
+			char_str_len = strlen(netstat);
+			printf("netstat string length = %d\n", char_str_len);
+
+			char_str_len = strlen(daqstate);
+			printf("daqstate string length = %d\n", char_str_len);
+
+			char_str_len = strlen(blocsize);
+			printf("blocsize string length = %d\n", char_str_len);
+
+			char_str_len = strlen(directio);
+			printf("directio string length = %d\n", char_str_len);
+
+			char_str_len = strlen(nbits);
+			printf("nbits string length = %d\n", char_str_len);
+
+			char_str_len = strlen(npol);
+			printf("npol string length = %d\n", char_str_len);
+
+			char_str_len = strlen(obsnchan);
+			printf("obsnchan string length = %d\n", char_str_len);
+
+			char_str_len = strlen(obs_mode);
+			printf("obs_mode string length = %d\n", char_str_len);
+
+			char_str_len = strlen(diskstat);
+			printf("diskstat string length = %d\n", char_str_len);
+
+			char_str_len = strlen(obsinfo_raw);
+			printf("obsinfo string length = %d\n", char_str_len);
+
+			char_str_len = strlen(fenchan);
+			printf("fenchan string length = %d\n", char_str_len);
+
+			char_str_len = strlen(nants);
+			printf("nants string length = %d\n", char_str_len);
+
+			char_str_len = strlen(schan);
+			printf("schan string length = %d\n", char_str_len);
+
+			char_str_len = strlen(piperblk);
+			printf("piperblk string length = %d\n", char_str_len);
+
+			char_str_len = strlen(synctime);
+			printf("synctime string length = %d\n", char_str_len);
+
+			char_str_len = strlen(pktidx);
+			printf("pktidx string length = %d\n", char_str_len);
+
+			char_str_len = strlen(dwell);
+			printf("dwell string length = %d\n", char_str_len);
+
+			char_str_len = strlen(pktstop);
+			printf("pktstop string length = %d\n", char_str_len);
+
+			char_str_len = strlen(az);
+			printf("az string length = %d\n", char_str_len);
+
+			char_str_len = strlen(ra);
+			printf("ra string length = %d\n", char_str_len);
+
+			char_str_len = strlen(dec);
+			printf("dec string length = %d\n", char_str_len);
+
+			char_str_len = strlen(el);
+			printf("el string length = %d\n", char_str_len);
+
+			char_str_len = strlen(src_name);
+			printf("src_name string length = %d\n", char_str_len);
+
+			char_str_len = strlen(ra_str);
+			printf("ra_str string length = %d\n", char_str_len);
+
+			char_str_len = strlen(dec_str);
+			printf("dec_str string length = %d\n", char_str_len);
+
+			char_str_len = strlen(sttvalid);
+			printf("sttvalid string length = %d\n", char_str_len);
+
+			char_str_len = strlen(stt_imjd);
+			printf("stt_imjd string length = %d\n", char_str_len);
+
+			char_str_len = strlen(stt_smjd);
+			printf("stt_smjd string length = %d\n", char_str_len);
+
+			char_str_len = strlen(stt_offs);
+			printf("stt_offs string length = %d\n", char_str_len);
+
+			char_str_len = strlen(dropstat);
+			printf("dropstat string length = %d\n", char_str_len);
+
+			char_str_len = strlen(end);
+			printf("end string length = %d\n", char_str_len);
+		}
 
 		// Payload
 		for (int s = 0; s < n_subbands; s++)

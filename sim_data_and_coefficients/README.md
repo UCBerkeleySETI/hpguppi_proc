@@ -1,9 +1,11 @@
 Simulated data and coefficients library
 
 To compile the test code and generate simulated RAW and BFR5 files, use the following command:
+
 `gcc sim_raw_bfr5_files.c sim_data_coeff.c -o sim_raw_bfr5_files -lm -lhdf5`
 
 To compile the test code and generate binary files of simulated data and coefficients, use the following command:
+
 `gcc sim_data_coeff_main.c sim_data_coeff.c -o sim_data_coeff -lm`
 
 To learn the different arguments necessary to run the executable/program, use the `-h` or `--help` option.
