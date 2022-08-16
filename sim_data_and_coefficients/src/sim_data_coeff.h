@@ -18,6 +18,12 @@
 #define N_ANT (64) // 64                                                // Number of possible antennas (64 is also computationally efficient since it is a multiple of 32 which is the size of a warp)
 #define N_BEAM (64) // 64                                               // Number of beams
 
+#define NANTS_BFR5 64
+#define NPOL_BFR5 2
+#define NCHAN_BFR5 64 // 16 or 64 or 512 for MK and 32 for COSMIC
+#define NTIMES_BFR5 30
+#define NBEAMS_BFR5 64
+
 // "2" for inphase and quadrature
 #define N_INPUT       (unsigned long int)(2*N_POL*N_TIME*N_FREQ*N_ANT)                  // Size of input. Currently, same size as output
 #define N_COEFF       (unsigned long int)(2*N_POL*N_ANT*N_BEAM*N_FREQ)                  // Size of beamformer coefficients
