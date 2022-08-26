@@ -53,7 +53,7 @@ then
         out_thread=hpguppi_coherent_bf_thread
     else
         net_thread=hpguppi_stride_input_thread
-	out_thread=hpguppi_upchan_bf_thread
+	    out_thread=hpguppi_upchan_bf_thread
     fi
 
     if [ "$1" = 'cp' ] || [ "$1" = 'fil' ]

@@ -138,6 +138,7 @@ static void *run(hashpipe_thread_args_t *args)
     hgets(st.buf, "BASEFILE", sizeof(basefilename), basefilename);
 
     char cur_fname[200] = {0};
+    char cur_fname_nopath[200] = {0};
     char prev_fname[200] = {0};
     char indir[200] = {0};
     strcpy(prev_fname, "prev_fname"); // Initialize as different string that cur_fname
@@ -309,14 +310,15 @@ static void *run(hashpipe_thread_args_t *args)
                             }
                             if (strlen(indir) != 0)
                             {
-                                strcat(indir, cur_fname); // Concatenate the directory and filename
-                                strcpy(cur_fname, indir); // Use cur_fname as the current file name variable moving forward
+                                strcat(indir, cur_fname);            // Concatenate the directory and filename
+                                strcpy(cur_fname_nopath, cur_fname); // Get the RAW file name without the path/directory for comparison
+                                strcpy(cur_fname, indir);            // Use cur_fname as the current file name variable moving forward
                             }
                         }
                     }
                     // Now create the basefilename
                     // If a '...0000.raw' file exists, that is different from the previous '...0000.raw' file
-                    if (strcmp(prev_fname, cur_fname) != 0)
+                    if (strcmp(prev_fname, cur_fname_nopath) != 0)
                     {
                         // If a new scan has started as a result of skipping due to a missing bfr5 file,
                         // reset the keyword in shared memory so the process can start over for the new scan
@@ -326,7 +328,7 @@ static void *run(hashpipe_thread_args_t *args)
                         hashpipe_status_unlock_safe(&st);
 
                         printf("STRIDE INPUT: RAW file name is currently: %s \n", cur_fname); // Let the user know the current RAW file name
-                        strcpy(prev_fname, cur_fname);                                        // Save this file name for comparison on the next iteration
+                        strcpy(prev_fname, cur_fname_nopath);                                 // Save this file name for comparison on the next iteration
 
                         base_pos = strchr(cur_fname, '.'); // Finds the first occurence of a period in the filename
                         period_pos = base_pos - cur_fname;
@@ -358,7 +360,7 @@ static void *run(hashpipe_thread_args_t *args)
                         if (wait_filename == 0)
                         { // Print "waiting for new RAW file name" only once
                             wait_filename = 1;
-                            printf("STRIDE INPUT: Waiting for new RAW file name! \n");
+                            printf("STRIDE INPUT: Waiting for new RAW file name corresponding to a new scan! \n");
                         }
 
                         // Get RAW file name in the status buffer
@@ -377,8 +379,9 @@ static void *run(hashpipe_thread_args_t *args)
                         }
                         if (strlen(indir) != 0)
                         {
-                            strcat(indir, cur_fname); // Concatenate the directory and filename
-                            strcpy(cur_fname, indir); // Use cur_fname as the current file name variable moving forward
+                            strcat(indir, cur_fname);            // Concatenate the directory and filename
+                            strcpy(cur_fname_nopath, cur_fname); // Get the RAW file name without the path/directory for comparison
+                            strcpy(cur_fname, indir);            // Use cur_fname as the current file name variable moving forward
                         }
 
                         // Will exit if thread has been cancelled
@@ -396,7 +399,6 @@ static void *run(hashpipe_thread_args_t *args)
                         char err_fname[256];
                         sprintf(err_fname, "Error opening file: %s", fname);
                         hashpipe_error(__FUNCTION__, err_fname);
-                        //hashpipe_error(__FUNCTION__, "Error opening file.");
                         pthread_exit(NULL);
                     }
 
@@ -723,15 +725,47 @@ static void *run(hashpipe_thread_args_t *args)
                         }
                         else
                         {
+                            // Set last block of scan as filled then create dummy block
+                            // Mark block as full
+                            hpguppi_input_databuf_set_filled(db, block_idx);
+                            printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                            // Setup for next block (dummy block)
+                            block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+
+                            // -------------------------------------------------------------- //
+                            // Wait for new block to be free, then clear it
+                            // if necessary and fill its header with new values.
+                            // -------------------------------------------------------------- //
+                            while ((rv = hpguppi_input_databuf_wait_free(db, block_idx)) != HASHPIPE_OK)
+                            {
+                                if (rv == HASHPIPE_TIMEOUT)
+                                {
+                                    hashpipe_status_lock_safe(&st);
+                                    hputs(st.buf, status_key, "blocked");
+                                    hashpipe_status_unlock_safe(&st);
+                                    continue;
+                                }
+                                else
+                                {
+                                    hashpipe_error(__FUNCTION__, "error waiting for free databuf");
+                                    pthread_exit(NULL);
+                                    break;
+                                }
+                            }
+
                             // Create a header for a dummy block
                             header = hpguppi_databuf_header(db, block_idx);
+                            hashpipe_status_lock_safe(&st);
+                            hputs(st.buf, status_key, "receiving");
                             memcpy(header, &header_buf, headersize);
+                            hashpipe_status_unlock_safe(&st);
 
                             // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
                             hputi8(header, "PKTIDX", pktstop);
 
 #if 1 // Needed?
-                            // Initialize block
+      // Initialize block
                             ptr = hpguppi_databuf_data(db, block_idx);
 
                             // Copy block of zeros to block in buffer
