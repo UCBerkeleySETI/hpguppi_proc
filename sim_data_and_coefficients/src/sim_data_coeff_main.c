@@ -175,6 +175,7 @@ int main(int argc, char **argv)
 	int n_coeff = 0;
 	float rect_zero_samps = 0;
 	float freq_band_shift = 0;
+	int filenum = 0;
 
 	// ---------------- MeerKAT specs --------------- //
 	if (telescope_flag == 0)
@@ -349,7 +350,7 @@ int main(int argc, char **argv)
 	printf("rect_zero_samps  = %f (Number of time samples that are zero on either side of simulated rect)\n", rect_zero_samps);
 
 	// Generate simulated data
-	signed char *sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag, rect_zero_samps, freq_band_shift);
+	signed char *sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag, rect_zero_samps, freq_band_shift, filenum);
 	printf("Simulated data \n");
 
 	// Generate simulated weights or coefficients

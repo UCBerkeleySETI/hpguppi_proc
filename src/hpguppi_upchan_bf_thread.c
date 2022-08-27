@@ -308,17 +308,6 @@ static void *run(hashpipe_thread_args_t *args)
     // Get subband index
     hgeti4(p_header, "SUBBAND", &subband_idx); // Get current index of subband being processed
 
-    // Read param struct for this block
-    if (first)
-    {
-      hpguppi_read_obs_params(p_header, &gp, &pf);
-      first = 0;
-    }
-    else
-    {
-      hpguppi_read_subint_params(p_header, &gp, &pf);
-    }
-
     // Read pktidx, pktstart, pktstop from header
     hgeti8(p_header, "PKTIDX", &pktidx);
     hgeti8(p_header, "PKTSTART", &pktstart);
@@ -384,6 +373,17 @@ static void *run(hashpipe_thread_args_t *args)
     // Reset rec_stop flag to notify the user of the end of a scan
     rec_stop = 0;
 
+    // Read param struct for this block
+    if (first)
+    {
+      hpguppi_read_obs_params(p_header, &gp, &pf);
+      first = 0;
+    }
+    else
+    {
+      hpguppi_read_subint_params(p_header, &gp, &pf);
+    }
+    
     // Inform status buffer of processing status
     hashpipe_status_lock_safe(st);
     hputs(st->buf, "PROCSTAT", "START"); // Inform status buffer that the scan processing has started

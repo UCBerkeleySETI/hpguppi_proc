@@ -269,6 +269,29 @@ static void *run(hashpipe_thread_args_t *args)
                     else
                     {
                         hashpipe_error(__FUNCTION__, "error waiting for free databuf");
+                        
+                        // -------------------------------------------------------------- //
+                        // Let downstream thread know it should also quit
+                        // -------------------------------------------------------------- //
+                        // Create a header for a dummy block
+                        header = hpguppi_databuf_header(db, block_idx);
+
+                        // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                        hputi8(header, "PKTSTART", pktstop);
+                        hputi8(header, "PKTIDX", pktstop);
+                        hputi8(header, "PKTSTOP", pktstop);
+
+#if 1 // Needed?
+      // Initialize block
+                        ptr = hpguppi_databuf_data(db, block_idx);
+
+                        // Copy block of zeros to block in buffer
+                        memcpy(ptr, zero_blk, N_INPUT);
+
+                        // Mark block as full
+                        hpguppi_input_databuf_set_filled(db, block_idx);
+#endif
+
                         pthread_exit(NULL);
                         break;
                     }
@@ -399,6 +422,29 @@ static void *run(hashpipe_thread_args_t *args)
                         char err_fname[256];
                         sprintf(err_fname, "Error opening file: %s", fname);
                         hashpipe_error(__FUNCTION__, err_fname);
+
+                        // -------------------------------------------------------------- //
+                        // Let downstream thread know it should also quit
+                        // -------------------------------------------------------------- //
+                        // Create a header for a dummy block
+                        header = hpguppi_databuf_header(db, block_idx);
+
+                        // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                        hputi8(header, "PKTSTART", pktstop);
+                        hputi8(header, "PKTIDX", pktstop);
+                        hputi8(header, "PKTSTOP", pktstop);
+
+#if 1 // Needed?
+      // Initialize block
+                        ptr = hpguppi_databuf_data(db, block_idx);
+
+                        // Copy block of zeros to block in buffer
+                        memcpy(ptr, zero_blk, N_INPUT);
+
+                        // Mark block as full
+                        hpguppi_input_databuf_set_filled(db, block_idx);
+#endif
+
                         pthread_exit(NULL);
                     }
 
@@ -749,6 +795,29 @@ static void *run(hashpipe_thread_args_t *args)
                                 else
                                 {
                                     hashpipe_error(__FUNCTION__, "error waiting for free databuf");
+
+                                    // -------------------------------------------------------------- //
+                                    // Let downstream thread know it should also quit
+                                    // -------------------------------------------------------------- //
+                                    // Create a header for a dummy block
+                                    header = hpguppi_databuf_header(db, block_idx);
+
+                                    // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                                    hputi8(header, "PKTSTART", pktstop);
+                                    hputi8(header, "PKTIDX", pktstop);
+                                    hputi8(header, "PKTSTOP", pktstop);
+
+#if 1 // Needed?
+      // Initialize block
+                                    ptr = hpguppi_databuf_data(db, block_idx);
+
+                                    // Copy block of zeros to block in buffer
+                                    memcpy(ptr, zero_blk, N_INPUT);
+
+                                    // Mark block as full
+                                    hpguppi_input_databuf_set_filled(db, block_idx);
+#endif
+
                                     pthread_exit(NULL);
                                     break;
                                 }

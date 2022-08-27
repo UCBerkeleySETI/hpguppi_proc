@@ -20,7 +20,7 @@
 
 #define NANTS_BFR5 64
 #define NPOL_BFR5 2
-#define NCHAN_BFR5 64 // 16 or 64 or 512 for MK and 32 for COSMIC
+#define NCHAN_BFR5 4096 // 16 or 64 or 512 for MK and 32 for COSMIC
 #define NTIMES_BFR5 30
 #define NBEAMS_BFR5 64
 
@@ -63,6 +63,7 @@
 // b - beam index
 
 #define data_in_idx(p, t, w, a, c, Np, Nt, Nw, Na)           ((p) + (Np)*(t) + (Nt)*(Np)*(w) + (Nw)*(Nt)*(Np)*(a) + (Na)*(Nw)*(Nt)*(Np)*(c))
+#define data_raw_idx(p, t, c, a, Np, Nt, Nc)                 ((p) + (Np)*(t) + (Nt)*(Np)*(c) + (Nc)*(Nt)*(Np)*(a))
 //#define data_in_idx(p, c, a, t, w, Np, Nc, Na, Nt)           ((p) + (Np)*(c) + (Nc)*(Np)*(a) + (Na)*(Nc)*(Np)*(t) + (Nt)*(Na)*(Nc)*(Np)*(w))
 #define data_tr_idx(t, a, p, c, w, Nt, Na, Np, Nc)           ((t) + (Nt)*(a) + (Na)*(Nt)*(p) + (Np)*(Na)*(Nt)*(c) + (Nc)*(Np)*(Na)*(Nt)*(w))
 #define data_fft_out_idx(f, a, p, c, w, Nf, Na, Np, Nc)      ((f) + (Nf)*(a) + (Na)*(Nf)*(p) + (Np)*(Na)*(Nf)*(c) + (Nc)*(Np)*(Na)*(Nf)*(w))
@@ -81,5 +82,5 @@ typedef struct complex_t{
 	float im;
 }complex_t;
 
-signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift);
+signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift, int filenum);
 float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam, int n_chan, int sim_flag, int telescope_flag);
