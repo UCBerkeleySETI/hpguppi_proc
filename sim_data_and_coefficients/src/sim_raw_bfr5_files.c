@@ -18,6 +18,9 @@
 #define OBSID_STR "MK-obsid"
 #define OBSID_LEN sizeof(OBSID_STR)
 
+#define cal_all_idx(a, p, f, Na, Np)            ((a) + (Na)*(p) + (Np)*(Na)*(f))
+#define delay_rates_idx(a, b, t, Na, Nb)        ((a) + (Na)*(b) + (Nb)*(Na)*(t))
+
 int main(int argc, char **argv)
 {
 	if ((argc > 9) || (argc < 2))
@@ -164,10 +167,15 @@ int main(int argc, char **argv)
 	float freq_band_shift = 0;
 	float coarse_chan_bw = 0;
 	float node_bw = 0;
+	int n_blocks = 0;
+	int n_nodes = 0;
 
+	printf("Here \n");
 	// ---------------- MeerKAT specs --------------- //
 	if (telescope_flag == 0)
 	{
+		n_blocks = 128;
+		n_nodes = 64;
 		n_input = N_INPUT;
 		node_bw = 13.375; // 13.375 MHz
 		if (argc > 6)
@@ -270,6 +278,8 @@ int main(int argc, char **argv)
 	// ------------------ VLASS specs ----------------//
 	else if (telescope_flag == 1)
 	{
+		n_blocks = 153; // For 5 seconds worth of data
+		n_nodes = 32;
 		n_input = VLASS_N_INPUT;
 		coarse_chan_bw = 2; // 2 MHz
 		node_bw = 64;		// 64 MHz
@@ -329,8 +339,6 @@ int main(int argc, char **argv)
 	}
 	// -----------------------------------------------//
 
-	int n_blocks = 128;
-	int n_nodes = 64;
 	float tbin_num = (1 / coarse_chan_bw) * 1e-6;
 	int blksize = 2 * n_pol * n_sim_ant * (n_chan * n_subbands) * ((int)nt / n_blocks);
 	int obsnchan_num = n_sim_ant * (n_chan * n_subbands);
@@ -413,7 +421,7 @@ int main(int argc, char **argv)
 			sprintf(instance, "INSTANCE=%-23s0%-47s", " ", " ");
 			fwrite(instance, sizeof(char), REC_SIZE, input_file);
 
-			sprintf(raw_obsid, "%-80s", "OBSID   = 'MK-obsid'");
+			sprintf(raw_obsid, "%-80s", "OBSID   = 'OB-obsid'");
 			fwrite(raw_obsid, sizeof(char), REC_SIZE, input_file);
 
 			sprintf(bindhost, "%-80s", "BINDHOST= 'eth4    '");
@@ -728,8 +736,6 @@ int main(int argc, char **argv)
 	hsize_t rates_dims[3];	 /* rates dataset dimensions */
 	hsize_t time_array_dims; /* time_array dataset dimensions */
 	herr_t status;
-	int delays_elements = NTIMES_BFR5 * NBEAMS_BFR5 * NANTS_BFR5;
-	int rates_elements = NTIMES_BFR5 * NBEAMS_BFR5 * NANTS_BFR5;
 
 	// Create complex data type for call_all dataset
 	typedef struct complex_t
@@ -738,51 +744,38 @@ int main(int argc, char **argv)
 		float im;
 	} complex_t;
 
-	hid_t reim_tid;
-	reim_tid = H5Tcreate(H5T_COMPOUND, sizeof(complex_t));
-	H5Tinsert(reim_tid, "r", HOFFSET(complex_t, re), H5T_IEEE_F32LE);
-	H5Tinsert(reim_tid, "i", HOFFSET(complex_t, im), H5T_IEEE_F32LE);
-
-	complex_t cal_all_data[NCHAN_BFR5][NPOL_BFR5][NANTS_BFR5];
-	// Calibration solutions are set to 1 since it'll be very difficult to simulate them
-	for (int i = 0; i < NCHAN_BFR5; i++)
-	{
-		for (int j = 0; j < NPOL_BFR5; j++)
-		{
-			for (int k = 0; k < NANTS_BFR5; k++)
-			{
-				cal_all_data[i][j][k].re = 1;
-			}
-		}
-	}
-	double delays_data[NTIMES_BFR5][NBEAMS_BFR5][NANTS_BFR5];
-	for (int i = 0; i < NTIMES_BFR5; i++)
-	{
-		for (int j = 0; j < NBEAMS_BFR5; j++)
-		{
-			for (int k = 0; k < NANTS_BFR5; k++)
-			{
-				delays_data[i][j][k] = 0;
-			}
-		}
-	}
-	double rates_data[NTIMES_BFR5][NBEAMS_BFR5][NANTS_BFR5];
-	for (int i = 0; i < NTIMES_BFR5; i++)
-	{
-		for (int j = 0; j < NBEAMS_BFR5; j++)
-		{
-			for (int k = 0; k < NANTS_BFR5; k++)
-			{
-				rates_data[i][j][k] = 0;
-			}
-		}
-	}
+	complex_t *cal_all_data;
+	double *delays_data;
+	double *rates_data;
 	double *time_array_data;
 	double *ra_data;
 	double *dec_data;
 	uint64_t nbeams_b5 = 64;
 	uint64_t npol_b5 = 2;
-	char *src_names_str[NBEAMS_BFR5] = {"BORESIGHT.B00", "JBLAH-BLAH.B01", "JBLAH-BLAH.B02", "JBLAH-BLAH.B03",
+	size_t src_size;
+	size_t obs_size;
+	char b_str[256] = {0};
+	char src_name_tmp[256];
+	int src_strlen = 0;
+	char bfr5_filename[256];
+
+	char obsid[1][OBSID_LEN] = {OBSID_STR};
+
+	int Nant = 63;	 // Number of antennas
+	int Nbeams = 61; // Number of beams
+	int Ntimes = 30; // Number of time stamps
+	int Npol = 2;	 // Number of polarizations
+
+	hid_t reim_tid;
+	reim_tid = H5Tcreate(H5T_COMPOUND, sizeof(complex_t));
+	H5Tinsert(reim_tid, "r", HOFFSET(complex_t, re), H5T_IEEE_F32LE);
+	H5Tinsert(reim_tid, "i", HOFFSET(complex_t, im), H5T_IEEE_F32LE);
+
+	int nants_bfr5 = 0;
+	int nbeams_bfr5 = 0;
+	int nchan_bfr5 = 0;
+
+	char *src_names_str[NBEAMS_MK] = {"BORESIGHT.B00", "JBLAH-BLAH.B01", "JBLAH-BLAH.B02", "JBLAH-BLAH.B03",
 										"JBLAH-BLAH.B04", "JBLAH-BLAH.B05", "JBLAH-BLAH.B06", "JBLAH-BLAH.B07", "JBLAH-BLAH.B08", "JBLAH-BLAH.B09",
 										"JBLAH-BLAH.B10", "JBLAH-BLAH.B11", "JBLAH-BLAH.B12", "JBLAH-BLAH.B13", "JBLAH-BLAH.B14", "JBLAH-BLAH.B15",
 										"JBLAH-BLAH.B16", "JBLAH-BLAH.B17", "JBLAH-BLAH.B18", "JBLAH-BLAH.B19", "JBLAH-BLAH.B20", "JBLAH-BLAH.B21",
@@ -793,36 +786,87 @@ int main(int argc, char **argv)
 										"JBLAH-BLAH.B46", "JBLAH-BLAH.B47", "JBLAH-BLAH.B48", "JBLAH-BLAH.B49", "JBLAH-BLAH.B50", "JBLAH-BLAH.B51",
 										"JBLAH-BLAH.B52", "JBLAH-BLAH.B53", "JBLAH-BLAH.B54", "JBLAH-BLAH.B55", "JBLAH-BLAH.B56", "JBLAH-BLAH.B57",
 										"JBLAH-BLAH.B58", "JBLAH-BLAH.B59", "JBLAH-BLAH.B60", "JBLAH-BLAH.B61", "JBLAH-BLAH.B62", "JBLAH-BLAH.B63"};
-	size_t src_size;
-	size_t obs_size;
+
+	if (telescope_flag == 0){
+		nants_bfr5 = NANTS_MK;
+		nbeams_bfr5 = NBEAMS_MK;
+		if (strcmp(mode_flag, "1k") == 0){
+			nchan_bfr5 = NCHAN_MK1K;
+		}else if (strcmp(mode_flag, "4k") == 0){
+			nchan_bfr5 = NCHAN_MK4K;
+		}else if (strcmp(mode_flag, "32k") == 0){
+			nchan_bfr5 = NCHAN_MK32K;
+		}
+	}else if (telescope_flag == 1){
+		nants_bfr5 = NANTS_VLA;
+		if (spec_flag == 0){
+			nbeams_bfr5 = NBEAMS_VLAR;
+		}else if (spec_flag == 1){
+			nbeams_bfr5 = NBEAMS_VLAD;
+		}
+		nchan_bfr5 = NCHAN_VLA;
+	}
+	int delays_elements = NTIMES_BFR5 * nbeams_bfr5 * nants_bfr5;
+	int rates_elements = NTIMES_BFR5 * nbeams_bfr5 * nants_bfr5;
 
 	// Allocate memory for array
+	cal_all_data = malloc(nchan_bfr5 * NPOL_BFR5 * nants_bfr5 * sizeof(complex_t));
+	delays_data = malloc(NTIMES_BFR5 * nbeams_bfr5 * nants_bfr5 * sizeof(complex_t));
+	rates_data = malloc(NTIMES_BFR5 * nbeams_bfr5 * nants_bfr5 * sizeof(complex_t));
 	time_array_data = malloc(NTIMES_BFR5 * sizeof(double));
-	ra_data = malloc(NBEAMS_BFR5 * sizeof(double));
-	dec_data = malloc(NBEAMS_BFR5 * sizeof(double));
+	ra_data = malloc(nbeams_bfr5 * sizeof(double));
+	dec_data = malloc(nbeams_bfr5 * sizeof(double));
 
-	char b_str[256] = {0};
-	char src_name_tmp[256];
-	int src_strlen = 0;
-
-	char obsid[1][OBSID_LEN] = {OBSID_STR};
-
-	int Nant = 63;	 // Number of antennas
-	int Nbeams = 61; // Number of beams
-	int Ntimes = 30; // Number of time stamps
-	int Npol = 2;	 // Number of polarizations
-
+	//complex_t cal_all_data[NCHAN_BFR5][NPOL_BFR5][NANTS_BFR5];
+	// Calibration solutions are set to 1 since it'll be very difficult to simulate them
+	for (int i = 0; i < nchan_bfr5; i++)
+	{
+		for (int j = 0; j < NPOL_BFR5; j++)
+		{
+			for (int k = 0; k < nants_bfr5; k++)
+			{
+				cal_all_data[cal_all_idx(k, j, i, nants_bfr5, NPOL_BFR5)].re = 1;
+				cal_all_data[cal_all_idx(k, j, i, nants_bfr5, NPOL_BFR5)].im = 1;
+				//cal_all_data[k + nants_bfr5*j + NPOL_BFR5*nants_bfr5*i].re = 1;
+				//cal_all_data[i][j][k].re = 1;
+			}
+		}
+	}
+	//double delays_data[NTIMES_BFR5][NBEAMS_BFR5][NANTS_BFR5];
+	for (int i = 0; i < NTIMES_BFR5; i++)
+	{
+		for (int j = 0; j < nbeams_bfr5; j++)
+		{
+			for (int k = 0; k < nants_bfr5; k++)
+			{
+				//delays_data[i][j][k] = 0;
+				delays_data[delay_rates_idx(k, j, i, nants_bfr5, nbeams_bfr5)] = 0;
+			}
+		}
+	}
+	//double rates_data[NTIMES_BFR5][NBEAMS_BFR5][NANTS_BFR5];
+	for (int i = 0; i < NTIMES_BFR5; i++)
+	{
+		for (int j = 0; j < nbeams_bfr5; j++)
+		{
+			for (int k = 0; k < nants_bfr5; k++)
+			{
+				//rates_data[i][j][k] = 0;
+				rates_data[delay_rates_idx(k, j, i, nants_bfr5, nbeams_bfr5)] = 0;
+			}
+		}
+	}
+	
 	/*
 	 * Create a new file using H5ACC_TRUNC access,
 	 * default file creation properties, and default file
 	 * access properties.
 	 * Then close the file.
 	 */
-	char bfr5_filename[256];
 
 	strcpy(bfr5_filename, argv[1]);
 	// strcat(bfr5_filename, BASEFILE);
-	strcat(bfr5_filename, "MK-obsid");
+	strcat(bfr5_filename, "OB-obsid");
 	strcat(bfr5_filename, ".bfr5");
 	printf("Simulated BFR5 filename = %s\n", bfr5_filename);
 
@@ -840,32 +884,32 @@ int main(int argc, char **argv)
 	 * Describe the size of the array and create the data space for fixed
 	 * size dataset.
 	 */
-	cal_all_dims[0] = NCHAN_BFR5;
+	cal_all_dims[0] = nchan_bfr5;
 	cal_all_dims[1] = NPOL_BFR5;
-	cal_all_dims[2] = NANTS_BFR5;
+	cal_all_dims[2] = nants_bfr5;
 	cal_all_dataspace = H5Screate_simple(3, cal_all_dims, NULL);
 
 	delays_dims[0] = NTIMES_BFR5;
-	delays_dims[1] = NBEAMS_BFR5;
-	delays_dims[2] = NANTS_BFR5;
+	delays_dims[1] = nbeams_bfr5;
+	delays_dims[2] = nants_bfr5;
 	delays_dataspace = H5Screate_simple(3, delays_dims, NULL);
 
 	rates_dims[0] = NTIMES_BFR5;
-	rates_dims[1] = NBEAMS_BFR5;
-	rates_dims[2] = NANTS_BFR5;
+	rates_dims[1] = nbeams_bfr5;
+	rates_dims[2] = nants_bfr5;
 	rates_dataspace = H5Screate_simple(3, rates_dims, NULL);
 
 	time_array_dims = NTIMES_BFR5;
 	time_array_dataspace = H5Screate_simple(1, &time_array_dims, NULL);
 
-	ra_dims = NBEAMS_BFR5;
+	ra_dims = nbeams_bfr5;
 	ra_dataspace = H5Screate_simple(1, &ra_dims, NULL);
 
-	dec_dims = NBEAMS_BFR5;
+	dec_dims = nbeams_bfr5;
 	dec_dataspace = H5Screate_simple(1, &dec_dims, NULL);
 
 	printf("Here 1\n");
-	hsize_t src_dims[1] = {NBEAMS_BFR5}; /* src name dataset dimensions */
+	hsize_t src_dims[1] = {nbeams_bfr5}; /* src name dataset dimensions */
 	src_dataspace = H5Screate_simple(1, src_dims, NULL);
 
 	printf("Here 2\n");

@@ -18,11 +18,18 @@
 #define N_ANT (64) // 64                                                // Number of possible antennas (64 is also computationally efficient since it is a multiple of 32 which is the size of a warp)
 #define N_BEAM (64) // 64                                               // Number of beams
 
-#define NANTS_BFR5 64
-#define NPOL_BFR5 2
-#define NCHAN_BFR5 4096 // 16*64 or 64*64 or 512*64 for MK and 32 for COSMIC
+// Beamformer Recipe file dimensions depending on observatory and mode of operation
+#define NANTS_MK    64
+#define NANTS_VLA   32
+#define NPOL_BFR5   2
+#define NCHAN_MK1K  1024  // channels per node * number of nodes = 16*64 for MK
+#define NCHAN_MK4K  4096  // channels per node * number of nodes = 64*64 for MK
+#define NCHAN_MK32K 32768 // channels per node * number of nodes = 512*64 for MK
+#define NCHAN_VLA   1024  // channels per node * number of nodes = 32*32 for COSMIC
 #define NTIMES_BFR5 30
-#define NBEAMS_BFR5 64
+#define NBEAMS_MK   64
+#define NBEAMS_VLAD 31
+#define NBEAMS_VLAR  5
 
 // "2" for inphase and quadrature
 #define N_INPUT       (unsigned long int)(2*N_POL*N_TIME*N_FREQ*N_ANT)                  // Size of input. Currently, same size as output
