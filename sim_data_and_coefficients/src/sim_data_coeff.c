@@ -11,6 +11,7 @@
 // Generate simulated data
 signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift, int filenum)
 {
+	printf("In sim_data_ubf\n");
 	unsigned long int n_input = 0;
 	int n_ant_config = 0;
 	unsigned long int n_subbands = 0;

@@ -73,20 +73,21 @@ int main(int argc, char **argv)
 	if (argc == 2)
 	{
 		num_files = 2;
-		sim_data_flag = 6;
+		sim_data_flag = 7;
 	}
-	else if (argc >= 3)
+	else if (argc == 3)
 	{
 		num_files = atoi(argv[2]);
-		sim_data_flag = 6;
+		sim_data_flag = 7;
 	} // If the files and simulated flags are entered
 	else if (argc >= 4)
 	{
+		num_files = atoi(argv[2]);
 		sim_data_flag = atoi(argv[3]);
-		if (sim_data_flag < 0 || sim_data_flag > 6)
+		if (sim_data_flag < 0 || sim_data_flag > 7)
 		{
 			printf("sim_data_flag is out of bounds i.e. this option doesn't exist. The flag has been set to 5, the default. \n");
-			sim_data_flag = 6;
+			sim_data_flag = 7;
 		}
 	}
 
@@ -111,6 +112,7 @@ int main(int argc, char **argv)
 		printf("The observatory was not entered. The default is MK -> MeerKAT.\n");
 		printf("Enter -h as argument for help.\n");
 		telescope_flag = 0;
+		n_subbands = 16;
 	}
 
 	char mode_flag[5]; // Flag for operational mode for MeerKAT

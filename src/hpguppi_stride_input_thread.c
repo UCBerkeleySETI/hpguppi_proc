@@ -350,7 +350,8 @@ static void *run(hashpipe_thread_args_t *args)
                         hputi4(st.buf, "BFR5FID", bfr5fid);
                         hashpipe_status_unlock_safe(&st);
 
-                        printf("STRIDE INPUT: RAW file name is currently: %s \n", cur_fname); // Let the user know the current RAW file name
+                        printf("STRIDE INPUT: RAW file name was previously: %s \n", prev_fname);
+                        printf("STRIDE INPUT: RAW file name is currently:   %s \n", cur_fname_nopath); // Let the user know the current RAW file name
                         strcpy(prev_fname, cur_fname_nopath);                                 // Save this file name for comparison on the next iteration
 
                         base_pos = strchr(cur_fname, '.'); // Finds the first occurence of a period in the filename

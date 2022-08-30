@@ -20,7 +20,7 @@
 
 #define NANTS_BFR5 64
 #define NPOL_BFR5 2
-#define NCHAN_BFR5 4096 // 16 or 64 or 512 for MK and 32 for COSMIC
+#define NCHAN_BFR5 4096 // 16*64 or 64*64 or 512*64 for MK and 32 for COSMIC
 #define NTIMES_BFR5 30
 #define NBEAMS_BFR5 64
 
