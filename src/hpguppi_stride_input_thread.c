@@ -280,6 +280,7 @@ static void *run(hashpipe_thread_args_t *args)
                         hputi8(header, "PKTSTART", pktstop);
                         hputi8(header, "PKTIDX", pktstop);
                         hputi8(header, "PKTSTOP", pktstop);
+                        hputi4(header, "SUBBAND", s);
 
 #if 1 // Needed?
       // Initialize block
@@ -434,6 +435,7 @@ static void *run(hashpipe_thread_args_t *args)
                         hputi8(header, "PKTSTART", pktstop);
                         hputi8(header, "PKTIDX", pktstop);
                         hputi8(header, "PKTSTOP", pktstop);
+                        hputi4(header, "SUBBAND", s);
 
 #if 1 // Needed?
       // Initialize block
@@ -752,9 +754,11 @@ static void *run(hashpipe_thread_args_t *args)
                     else
                     {
                         // End of scan for sub-band s
-
+                        
                         // Start the next scan with file number 0
                         filenum = 0;
+
+                        printf("STRIDE INPUT: RAW filename: %s doesn't exist and end of file has not been reached so move on to next subband \n", fname);
 
                         // Inform the downstream thread that we have reached the end of a scan
                         hgeti8(header_buf, "PKTIDX", &cur_pktidx); // Needed???
@@ -764,7 +768,7 @@ static void *run(hashpipe_thread_args_t *args)
                         {
                             // Start of scan for subband s+1
                             sprintf(fname, "%s.%4.4d.raw", basefilename, filenum);
-                            printf("STRIDE INPUT: Opening first raw file '%s' of scan for subband = %d of %d \n", fname, (s + 1), n_subband);
+                            printf("STRIDE INPUT: Opening raw file '%s' of scan for subband = %d of %d \n", fname, (s + 2), n_subband);
                             fdin = open(fname, open_flags, 0644);
 
                             // Get raw file size in order to calculate the number of blocks in the file
@@ -807,6 +811,7 @@ static void *run(hashpipe_thread_args_t *args)
                                     hputi8(header, "PKTSTART", pktstop);
                                     hputi8(header, "PKTIDX", pktstop);
                                     hputi8(header, "PKTSTOP", pktstop);
+                                    hputi4(header, "SUBBAND", s);
 
 #if 1 // Needed?
       // Initialize block
@@ -833,6 +838,7 @@ static void *run(hashpipe_thread_args_t *args)
 
                             // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
                             hputi8(header, "PKTIDX", pktstop);
+                            hputi4(header, "SUBBAND", s);
 
 #if 1 // Needed?
       // Initialize block
@@ -1004,6 +1010,7 @@ static void *run(hashpipe_thread_args_t *args)
                                 hashpipe_status_unlock_safe(&st);
 
                                 hputi8(header, "PKTIDX", pktstop);
+                                hputi4(header, "SUBBAND", s);
 
                                 // Initialize block
                                 ptr = hpguppi_databuf_data(db, block_idx);

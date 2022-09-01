@@ -317,6 +317,7 @@ static void *run(hashpipe_thread_args_t *args)
     if (pktidx >= pktstop)
     {
       coeff_flag = 0;
+      printf("UBF: Before 'if ((cal_all_data != NULL) && (subband_idx == (n_subband - 1)))' Subband index = %d \n", subband_idx);
       // Possibly free memory here so it can be reallocated at the beginning of a scan to compensate for a change in size
       if ((cal_all_data != NULL) && (subband_idx == (n_subband - 1)))
       {
@@ -335,6 +336,7 @@ static void *run(hashpipe_thread_args_t *args)
         Cleanup_beamformer();
         // Reset block_count only at the end of the entire scan
         block_count = 0;
+        printf("Block count = %d, and memory including GPU memory has been freed. \n", block_count);
       }
       for (int b = 0; b < nbeams; b++)
       {
@@ -528,6 +530,8 @@ static void *run(hashpipe_thread_args_t *args)
 
       // Size of beamformer output
       blocksize = n_coarse_proc * n_fft * n_sti * sizeof(float);
+
+      printf("UBF: Before 'if ((sim_flag == 0) && (block_count == 0))' Block count = %d \n", block_count);
 
       if ((sim_flag == 0) && (block_count == 0))
       {
@@ -723,6 +727,9 @@ static void *run(hashpipe_thread_args_t *args)
         memcpy(base_no_src, &raw_basefilename[0], src_name_pos);
         // Place null terminator at the source name position right after the underscore
         base_no_src[src_name_pos] = '\0';
+
+        printf("UBF: BASEFILE with no src    = %s\n", base_no_src);
+        printf("UBF: RAW basefilename is now = %s\n", raw_basefilename);
       }
 
       if (sim_flag == 1)
@@ -759,6 +766,7 @@ static void *run(hashpipe_thread_args_t *args)
       // Open nbeams filterbank files to save a beam per file i.e. N_BIN*n_fft*sizeof(float) per file.
       // Added 1 to nbeams to account for the incoherent beam.
       // printf("UBF: Opening filterbank files \n");
+      printf("UBF: BASEFILE with no src    = %s\n", base_no_src);
       for (int b = 0; b < (nbeams + 1); b++)
       {
         if (sim_flag == 0)

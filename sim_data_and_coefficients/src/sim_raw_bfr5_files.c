@@ -12,10 +12,10 @@
 #define REC_SIZE 80
 
 //#define BASEFILE "guppi_raw_bfr5_test_srcname_JBLAH-BLAH.0000"
-#define BASEFILE "guppi_raw_bfr5_test_JBORE-SIGHT_0001."
+#define BASEFILE "guppi_raw_bfr5_test2_JBORE-SIGHT_0001."
 
 //#define FILE "/home/mruzinda/hpguppi_proc/sim_data_and_coefficients/test_data/guppi_bfr5_test_srcname_JBLAH-BLAH_NUM.bfr5"
-#define OBSID_STR "MK-obsid"
+#define OBSID_STR "OB-obsid"
 #define OBSID_LEN sizeof(OBSID_STR)
 
 #define cal_all_idx(a, p, f, Na, Np)            ((a) + (Na)*(p) + (Np)*(Na)*(f))
@@ -49,6 +49,7 @@ int main(int argc, char **argv)
 		printf("        sim_data = 4 -> Simulated cosine wave\n");
 		printf("        sim_data = 5 -> Simulated complex exponential i.e. exp(j*2*pi*f0*t)\n");
 		printf("        sim_data = 6 -> Simulated drifting signal that simulates ETI given a particular observatory and mode\n");
+		printf("        sim_data = 7 -> Simulated drifting signal that simulates ETI given a particular observatory and mode over a all time samples/blocks in a GUPPI RAW file\n");
 		printf("    <telescope flag> - Indicate the observatory specifications that you would like to use:\n");
 		printf("        MK  -> MeeKAT specifications \n");
 		printf("        VLA -> VLA specifications \n");
@@ -715,7 +716,7 @@ int main(int argc, char **argv)
 				}
 			}
 
-			printf("Block %d/%d written to RAW file.\n", b, n_blocks);
+			printf("Block %d/%d written to RAW file.\n", (b+1), n_blocks);
 		}
 
 		fclose(input_file);

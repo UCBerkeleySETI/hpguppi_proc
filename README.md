@@ -181,7 +181,7 @@ The setup for running everything is pretty much the same as it is above except t
 ./readraw_init.sh ubf
 ```
 
-The output is written to filterbank files which for now can be analyzed with plot\_waterfall\_blimpy.py in the post\_processing sub-directory which uses blimpy to generate a waterfall plot. The script is run with the filterbank file as the first argument. Or to generate plots with more user control, one can use plot\_upchan\_bf\_filterbank\_file.py in the same sub-directory. This file requires a little more. The variables filename, telescope_flag, mode_flag, and num\_raw\_files, must be changed within the script. I would make these variables arguments, but this is made difficult with a remote connenction in VS code using Jupiter notebook to enable plotting. 
+The output is written to filterbank files which for now can be analyzed with plot\_waterfall\_blimpy.py in the post\_processing sub-directory which uses blimpy to generate a waterfall plot. The script is run with the filterbank file as the first argument. Or to generate plots with more user control, one can use plot\_upchan\_bf\_filterbank\_file.py in the same sub-directory. This file requires a little more. The variables filename, telescope_flag, mode_flag, and num\_raw\_files, must be changed within the script. I would make these variables arguments, but this is made difficult with a remote connenction in VS code using Jupyter notebook to enable plotting. 
 
 In the near future, the beamformer will be optimized to increase the computation speed. It's still a little slow.
 
