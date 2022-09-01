@@ -317,7 +317,6 @@ static void *run(hashpipe_thread_args_t *args)
     if (pktidx >= pktstop)
     {
       coeff_flag = 0;
-      printf("UBF: Before 'if ((cal_all_data != NULL) && (subband_idx == (n_subband - 1)))' Subband index = %d \n", subband_idx);
       // Possibly free memory here so it can be reallocated at the beginning of a scan to compensate for a change in size
       if ((cal_all_data != NULL) && (subband_idx == (n_subband - 1)))
       {
@@ -385,7 +384,7 @@ static void *run(hashpipe_thread_args_t *args)
     {
       hpguppi_read_subint_params(p_header, &gp, &pf);
     }
-    
+
     // Inform status buffer of processing status
     hashpipe_status_lock_safe(st);
     hputs(st->buf, "PROCSTAT", "START"); // Inform status buffer that the scan processing has started
@@ -530,8 +529,6 @@ static void *run(hashpipe_thread_args_t *args)
 
       // Size of beamformer output
       blocksize = n_coarse_proc * n_fft * n_sti * sizeof(float);
-
-      printf("UBF: Before 'if ((sim_flag == 0) && (block_count == 0))' Block count = %d \n", block_count);
 
       if ((sim_flag == 0) && (block_count == 0))
       {
@@ -720,14 +717,24 @@ static void *run(hashpipe_thread_args_t *args)
 
         // Get basefilename with no source name using SRC_NAME from GUPPI RAW file
         char_offset = strstr(raw_basefilename, src_name);
-        // Subtract pointer of source name position from that of the RAW basefilename to get the correct number of bytes to copy
-        src_name_pos = char_offset - raw_basefilename;
+        // Check for SRC_NAME in RAW file name
+        // If there is a SRC_NAME, get the string without it
+        // Else, just copy the full RAW file name
+        if (char_offset != NULL)
+        {
+          // Subtract pointer of source name position from that of the RAW basefilename to get the correct number of bytes to copy
+          src_name_pos = char_offset - raw_basefilename;
 
-        // Copy raw basefilename with no source name
-        memcpy(base_no_src, &raw_basefilename[0], src_name_pos);
-        // Place null terminator at the source name position right after the underscore
-        base_no_src[src_name_pos] = '\0';
-
+          // Copy raw basefilename with no source name
+          memcpy(base_no_src, &raw_basefilename[0], src_name_pos);
+          // Place null terminator at the source name position right after the underscore
+          base_no_src[src_name_pos] = '\0';
+        }
+        else
+        {
+          strcpy(base_no_src, raw_basefilename);
+        }
+        
         printf("UBF: BASEFILE with no src    = %s\n", base_no_src);
         printf("UBF: RAW basefilename is now = %s\n", raw_basefilename);
       }
@@ -766,7 +773,6 @@ static void *run(hashpipe_thread_args_t *args)
       // Open nbeams filterbank files to save a beam per file i.e. N_BIN*n_fft*sizeof(float) per file.
       // Added 1 to nbeams to account for the incoherent beam.
       // printf("UBF: Opening filterbank files \n");
-      printf("UBF: BASEFILE with no src    = %s\n", base_no_src);
       for (int b = 0; b < (nbeams + 1); b++)
       {
         if (sim_flag == 0)
