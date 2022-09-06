@@ -356,6 +356,8 @@ static void *run(hashpipe_thread_args_t *args)
         hashpipe_info(thread_name, "reached end of scan: "
                                    "pktstart %ld pktstop %ld pktidx %ld",
                       pktstart, pktstop, pktidx);
+        // Clear status buffers before new scan starts
+        hashpipe_status_clear(st);
         // Inform status buffer of processing status
         hashpipe_status_lock_safe(st);
         hputs(st->buf, "PROCSTAT", "END"); // Inform status buffer that the scan processing has ended
