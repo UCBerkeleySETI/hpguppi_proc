@@ -19,8 +19,8 @@ print(len(contents_float))
 print(contents_float[0])
 
 telescope_flag = "MK" # Observatory/radio telescope in use
-mode_flag = "32k" # Mode of operation
-num_raw_files = 5 # Number of RAW files
+mode_flag = "4k" # Mode of operation
+num_raw_files = 3 # Number of RAW files
 N_fine = 5120000
 
 # Array dimensions
