@@ -343,7 +343,7 @@ static void *run(hashpipe_thread_args_t *args)
         if (fdraw[b] != -1)
         {
           // Close file
-          hashpipe_info(thread_name, "Closing fil file for beam %d", b);
+          hashpipe_info(thread_name, "Closing fil file for subband %d, beam %d", subband_idx, b);
           close(fdraw[b]);
           // Reset fdraw, filenum, block_count
           fdraw[b] = -1;
@@ -356,7 +356,7 @@ static void *run(hashpipe_thread_args_t *args)
         hashpipe_info(thread_name, "reached end of scan: "
                                    "pktstart %ld pktstop %ld pktidx %ld",
                       pktstart, pktstop, pktidx);
-        
+
         // Inform status buffer of processing status
         hashpipe_status_lock_safe(st);
         hputs(st->buf, "PROCSTAT", "END"); // Inform status buffer that the scan processing has ended
@@ -459,6 +459,23 @@ static void *run(hashpipe_thread_args_t *args)
       {
         // Initialize beamformer (allocate all memory on the device)
         init_upchan_beamformer(telescope_flag);
+      }
+
+      // If there are files open from the previous subband, close them
+      if (subband_idx != prev_subband_idx)
+      {
+        for (int b = 0; b < nbeams; b++)
+        {
+          // If file open, close it
+          if (fdraw[b] != -1)
+          {
+            // Close file
+            hashpipe_info(thread_name, "Closing fil file for subband %d, beam %d", prev_subband_idx, b);
+            close(fdraw[b]);
+            // Reset fdraw, filenum, block_count
+            fdraw[b] = -1;
+          }
+        }
       }
 
       strcpy(prev_basefilename, raw_basefilename);
@@ -735,7 +752,7 @@ static void *run(hashpipe_thread_args_t *args)
         {
           strcpy(base_no_src, raw_basefilename);
         }
-        
+
         printf("UBF: BASEFILE with no src    = %s\n", base_no_src);
         printf("UBF: RAW basefilename is now = %s\n", raw_basefilename);
       }

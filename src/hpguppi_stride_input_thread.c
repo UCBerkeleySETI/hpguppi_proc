@@ -396,33 +396,13 @@ static void *run(hashpipe_thread_args_t *args)
                             // Clear status buffers before new scan starts
                             hashpipe_status_clear(&st);
 
+                            // Empty the current filename and input directory strings so the program waits for the status buffer keys to be filled
                             strcpy(cur_fname, "");
                             strcpy(indir, "");
 
                             printf("STRIDE INPUT: Waiting for new RAW file name corresponding to a new scan! \n");
                         }
-/*
-                        // Get RAW file name in the status buffer
-                        hashpipe_status_lock_safe(&st);
-                        hgets(st.buf, "RAWFILE", sizeof(cur_fname), cur_fname);
-                        hashpipe_status_unlock_safe(&st);
 
-                        // Assume the input directory may have changed
-                        hashpipe_status_lock_safe(&st);
-                        hgets(st.buf, "INPUTDIR", sizeof(indir), indir); // Don't have a name for this keyword yet, just going with 'INPUTDIR' for now
-                        hashpipe_status_unlock_safe(&st);
-                        // Ensure there's a slash at the end of the path
-                        if ((strlen(indir) != 0) && (indir[(strlen(indir) - 1)] != '/'))
-                        {
-                            strcat(indir, "/");
-                        }
-                        if (strlen(indir) != 0)
-                        {
-                            strcat(indir, cur_fname);            // Concatenate the directory and filename
-                            strcpy(cur_fname_nopath, cur_fname); // Get the RAW file name without the path/directory for comparison
-                            strcpy(cur_fname, indir);            // Use cur_fname as the current file name variable moving forward
-                        }
-*/
                         // Will exit if thread has been cancelled
                         pthread_testcancel();
 
