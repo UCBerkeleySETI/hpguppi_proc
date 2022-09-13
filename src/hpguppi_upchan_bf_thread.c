@@ -511,7 +511,7 @@ static void *run(hashpipe_thread_args_t *args)
       }
 
       // Calculate center frequncy of first coarse frequency channel
-      fch1 = obsfreq - (((n_chan_per_node - 1) / 2) - floor(n_fft / 2) / (n_fft * n_chan_per_node)) * obsbw;
+      fch1 = (obsfreq - (((n_chan_per_node - 1) / (2*n_chan_per_node)) * obsbw) - (floor(n_fft / 2) * (obsbw/(n_fft * n_chan_per_node))));
 
       n_samp_spec = n_fft * n_win_spec;
 
