@@ -149,8 +149,6 @@ static void *run(hashpipe_thread_args_t *args)
     long int slash_pos;
     char new_base[200];
 
-    char outdir[256];
-    hgets(st.buf, "OUTDIR", sizeof(outdir), outdir);
     static int fdin = -1; // Init output file descriptor (-1 means no file open)
     char *header;
     char header_buf[MAX_HDR_SIZE];
@@ -501,8 +499,6 @@ static void *run(hashpipe_thread_args_t *args)
 #if VERBOSE
                             printf("STRIDE INPUT: In if(block_count == 0){ \n");
 #endif
-                            // set_output_path(header_buf, outdir, MAX_HDR_SIZE);
-                            hputs(header_buf, "DATADIR", outdir);
 
                             // Initialize header of block in buffer
                             header = hpguppi_databuf_header(db, block_idx);
@@ -676,7 +672,8 @@ static void *run(hashpipe_thread_args_t *args)
 
                         // Set pktidx in the header of the shared memory buffer block (header_buf)
                         zero_blk_pktidx -= n_missed_blks * piperblk;
-                        hputi8(header_buf, "PKTIDX", zero_blk_pktidx);
+                        //hputi8(header_buf, "PKTIDX", zero_blk_pktidx);
+                        hputi8(header, "PKTIDX", zero_blk_pktidx);
 
                         // Copy block of zeros to block in buffer
                         memcpy(&ptr[block_count * Niq * npol * n_coarse_proc * nants * n_samp_per_block], zero_blk, Niq * npol * n_coarse_proc * nants * n_samp_per_block);
@@ -880,10 +877,6 @@ static void *run(hashpipe_thread_args_t *args)
 
                         if (block_count == 0)
                         {
-                            // set_output_path(header_buf, outdir, MAX_HDR_SIZE);
-                            hputs(header_buf, "DATADIR", outdir);
-                            printf("STRIDE INPUT: hputs(header_buf, DATADIR, outdir); \n");
-
                             // Initialize header of block in buffer
                             header = hpguppi_databuf_header(db, block_idx);
 
