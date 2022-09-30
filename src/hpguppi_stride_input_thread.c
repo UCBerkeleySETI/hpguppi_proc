@@ -52,7 +52,7 @@ static int get_header_size(int fdin, char *header_buf, size_t len)
     rv = read(fdin, header_buf, MAX_HDR_SIZE);
     if (rv == -1)
     {
-        hashpipe_error("hpguppi_stride_input_thread", "error reading file");
+        hashpipe_error("hpguppi_stride_input_thread", "error reading file when getting header size");
     }
     else if (rv > 0)
     {
@@ -267,7 +267,7 @@ static void *run(hashpipe_thread_args_t *args)
                     else
                     {
                         hashpipe_error(__FUNCTION__, "error waiting for free databuf");
-                        
+
                         // -------------------------------------------------------------- //
                         // Let downstream thread know it should also quit
                         // -------------------------------------------------------------- //
@@ -358,7 +358,7 @@ static void *run(hashpipe_thread_args_t *args)
 
                         printf("STRIDE INPUT: RAW file name was previously: %s \n", prev_fname);
                         printf("STRIDE INPUT: RAW file name is currently:   %s \n", cur_fname_nopath); // Let the user know the current RAW file name
-                        strcpy(prev_fname, cur_fname_nopath);                                 // Save this file name for comparison on the next iteration
+                        strcpy(prev_fname, cur_fname_nopath);                                          // Save this file name for comparison on the next iteration
 
                         base_pos = strchr(cur_fname, '.'); // Finds the first occurence of a period in the filename
                         period_pos = base_pos - cur_fname;
@@ -604,9 +604,15 @@ static void *run(hashpipe_thread_args_t *args)
                                 if (sim_flag == 0)
                                 {
                                     // Read the remaining dimensions in the RAW block (npol and n_samp_per_block) and place in the shared memory buffer block
-                                    // for(t = 0; t<n_samp_per_block; t++){
                                     read_blocsize = read(fdin, &ptr[data_shm_blk_idx(0, 0, block_count, a, c, npol, n_samp_per_block, nblocks, nants)], Niq * npol * n_samp_per_block);
-                                    //}
+
+                                    // read_blocsize would equal -1 if the RAW files were removed before processing was done
+                                    // So set fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
+                                    if (read_blocsize == -1)
+                                    {
+                                        fdin = -1; // If the return value of the read is -1, fdin must also be -1 so set it
+                                        break;
+                                    }
                                 }
                                 else
                                 {
@@ -616,6 +622,102 @@ static void *run(hashpipe_thread_args_t *args)
                                     //}
                                 }
                             }
+                            // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
+                            if (fdin == -1)
+                            {
+                                break;
+                            }
+                        }
+
+                        // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
+                        if (fdin == -1)
+                        {
+                            // Set last block of scan as filled then create dummy block
+                            // Mark block as full
+                            hpguppi_input_databuf_set_filled(db, block_idx);
+                            printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                            // Setup for next block (dummy block)
+                            block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+
+                            // -------------------------------------------------------------- //
+                            // Wait for new block to be free, then clear it
+                            // if necessary and fill its header with new values.
+                            // -------------------------------------------------------------- //
+                            while ((rv = hpguppi_input_databuf_wait_free(db, block_idx)) != HASHPIPE_OK)
+                            {
+                                if (rv == HASHPIPE_TIMEOUT)
+                                {
+                                    hashpipe_status_lock_safe(&st);
+                                    hputs(st.buf, status_key, "blocked");
+                                    hashpipe_status_unlock_safe(&st);
+                                    continue;
+                                }
+                                else
+                                {
+                                    hashpipe_error(__FUNCTION__, "error waiting for free databuf");
+
+                                    // -------------------------------------------------------------- //
+                                    // Let downstream thread know it should also quit
+                                    // -------------------------------------------------------------- //
+                                    // Create a header for a dummy block
+                                    header = hpguppi_databuf_header(db, block_idx);
+
+                                    // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                                    hputi8(header, "PKTSTART", pktstop);
+                                    hputi8(header, "PKTIDX", pktstop);
+                                    hputi8(header, "PKTSTOP", pktstop);
+                                    hputi4(header, "SUBBAND", s);
+
+#if 1 // Needed?
+      // Initialize block
+                                    ptr = hpguppi_databuf_data(db, block_idx);
+
+                                    // Copy block of zeros to block in buffer
+                                    memcpy(ptr, zero_blk, N_INPUT);
+
+                                    // Mark block as full
+                                    hpguppi_input_databuf_set_filled(db, block_idx);
+#endif
+
+                                    pthread_exit(NULL);
+                                    break;
+                                }
+                            }
+
+                            // Create a header for a dummy block
+                            header = hpguppi_databuf_header(db, block_idx);
+                            hashpipe_status_lock_safe(&st);
+                            hputs(st.buf, status_key, "receiving");
+                            memcpy(header, &header_buf, headersize);
+                            hashpipe_status_unlock_safe(&st);
+
+                            // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                            hputi8(header, "PKTIDX", pktstop);
+                            hputi4(header, "SUBBAND", s);
+
+#if 1 // Needed?
+      // Initialize block
+                            ptr = hpguppi_databuf_data(db, block_idx);
+
+                            // Copy block of zeros to block in buffer
+                            memcpy(ptr, zero_blk, N_INPUT);
+                            printf("STRIDE INPUT: After memcpy() N_INPUT = %ld \n", N_INPUT);
+#endif
+                            // End of scan for all sub-bands
+                            printf("STRIDE INPUT: cur_pktidx = %ld and pktstop = %ld \n", cur_pktidx, pktstop);
+
+                            // Reset block_count to 0 (the index of blocks in the RAW files of a subband)
+                            block_count = 0;
+
+                            // Mark block as full
+                            hpguppi_input_databuf_set_filled(db, block_idx);
+                            printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                            // Setup for next block
+                            block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+
+                            continue;
                         }
 
                         // Offset to end of a block (move through all subbands to get to the next block)
@@ -672,7 +774,7 @@ static void *run(hashpipe_thread_args_t *args)
 
                         // Set pktidx in the header of the shared memory buffer block (header_buf)
                         zero_blk_pktidx -= n_missed_blks * piperblk;
-                        //hputi8(header_buf, "PKTIDX", zero_blk_pktidx);
+                        // hputi8(header_buf, "PKTIDX", zero_blk_pktidx);
                         hputi8(header, "PKTIDX", zero_blk_pktidx);
 
                         // Copy block of zeros to block in buffer
@@ -695,10 +797,112 @@ static void *run(hashpipe_thread_args_t *args)
                                     lseek(fdin, data_blk_in_idx(0, 0, (c + n_coarse_proc * s), a, npol, n_samp_per_block, n_coarse), SEEK_CUR);
                                     // Place input data in shared memory buffer from RAW file
                                     // Read the remaining dimensions in the RAW block (npol and n_samp_per_block) and place in the shared memory buffer block
-                                    // for(int t = 0; t<n_samp_per_block; t++){
                                     read_blocsize = read(fdin, &ptr[data_shm_blk_idx(0, 0, block_count, a, c, npol, n_samp_per_block, nblocks, nants)], Niq * npol * n_samp_per_block);
-                                    //}
+
+                                    // read_blocsize would equal -1 if the RAW files were removed before processing was done
+                                    // So set fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
+                                    if (read_blocsize == -1)
+                                    {
+                                        fdin = -1; // If the return value of the read is -1, fdin must also be -1 so set it
+                                        break;
+                                    }
                                 }
+                                // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
+                                if (fdin == -1)
+                                {
+                                    break;
+                                }
+                            }
+
+                            // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
+                            if (fdin == -1)
+                            {
+                                // Set last block of scan as filled then create dummy block
+                                // Mark block as full
+                                hpguppi_input_databuf_set_filled(db, block_idx);
+                                printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                                // Setup for next block (dummy block)
+                                block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+
+                                // -------------------------------------------------------------- //
+                                // Wait for new block to be free, then clear it
+                                // if necessary and fill its header with new values.
+                                // -------------------------------------------------------------- //
+                                while ((rv = hpguppi_input_databuf_wait_free(db, block_idx)) != HASHPIPE_OK)
+                                {
+                                    if (rv == HASHPIPE_TIMEOUT)
+                                    {
+                                        hashpipe_status_lock_safe(&st);
+                                        hputs(st.buf, status_key, "blocked");
+                                        hashpipe_status_unlock_safe(&st);
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        hashpipe_error(__FUNCTION__, "error waiting for free databuf");
+
+                                        // -------------------------------------------------------------- //
+                                        // Let downstream thread know it should also quit
+                                        // -------------------------------------------------------------- //
+                                        // Create a header for a dummy block
+                                        header = hpguppi_databuf_header(db, block_idx);
+
+                                        // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                                        hputi8(header, "PKTSTART", pktstop);
+                                        hputi8(header, "PKTIDX", pktstop);
+                                        hputi8(header, "PKTSTOP", pktstop);
+                                        hputi4(header, "SUBBAND", s);
+
+#if 1 // Needed?
+      // Initialize block
+                                        ptr = hpguppi_databuf_data(db, block_idx);
+
+                                        // Copy block of zeros to block in buffer
+                                        memcpy(ptr, zero_blk, N_INPUT);
+
+                                        // Mark block as full
+                                        hpguppi_input_databuf_set_filled(db, block_idx);
+#endif
+
+                                        pthread_exit(NULL);
+                                        break;
+                                    }
+                                }
+
+                                // Create a header for a dummy block
+                                header = hpguppi_databuf_header(db, block_idx);
+                                hashpipe_status_lock_safe(&st);
+                                hputs(st.buf, status_key, "receiving");
+                                memcpy(header, &header_buf, headersize);
+                                hashpipe_status_unlock_safe(&st);
+
+                                // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                                hputi8(header, "PKTIDX", pktstop);
+                                hputi4(header, "SUBBAND", s);
+
+#if 1 // Needed?
+      // Initialize block
+                                ptr = hpguppi_databuf_data(db, block_idx);
+
+                                // Copy block of zeros to block in buffer
+                                memcpy(ptr, zero_blk, N_INPUT);
+                                printf("STRIDE INPUT: After memcpy() N_INPUT = %ld \n", N_INPUT);
+#endif
+                                // End of scan for all sub-bands
+                                printf("STRIDE INPUT: cur_pktidx = %ld and pktstop = %ld \n", cur_pktidx, pktstop);
+
+                                // Reset block_count to 0 (the index of blocks in the RAW files of a subband)
+                                block_count = 0;
+
+                                // Mark block as full
+                                hpguppi_input_databuf_set_filled(db, block_idx);
+                                printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                                // Setup for next block
+                                block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+
+                                continue;
                             }
 
                             cur_pos = lseek(fdin, data_blk_in_idx(0, 0, (n_coarse - (n_coarse_proc * (s + 1))), 0, npol, n_samp_per_block, n_coarse), SEEK_CUR);
@@ -744,7 +948,7 @@ static void *run(hashpipe_thread_args_t *args)
                     else
                     {
                         // End of scan for sub-band s
-                        
+
                         // Start the next scan with file number 0
                         filenum = 0;
 
@@ -761,8 +965,90 @@ static void *run(hashpipe_thread_args_t *args)
                             printf("STRIDE INPUT: Opening raw file '%s' of scan for subband = %d of %d \n", fname, (s + 2), n_subband);
                             fdin = open(fname, open_flags, 0644);
 
-                            // Get raw file size in order to calculate the number of blocks in the file
-                            raw_file_size = get_file_size(fdin);
+                            // If the RAW files are deleted before processing is over,
+                            // then the scan has essentially ended so clean up and wait for new RAW files
+                            if (fdin == -1)
+                            {
+                                // Set last block of scan as filled then create dummy block
+                                // Mark block as full
+                                hpguppi_input_databuf_set_filled(db, block_idx);
+                                printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                                // Setup for next block (dummy block)
+                                block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+
+                                // -------------------------------------------------------------- //
+                                // Wait for new block to be free, then clear it
+                                // if necessary and fill its header with new values.
+                                // -------------------------------------------------------------- //
+                                while ((rv = hpguppi_input_databuf_wait_free(db, block_idx)) != HASHPIPE_OK)
+                                {
+                                    if (rv == HASHPIPE_TIMEOUT)
+                                    {
+                                        hashpipe_status_lock_safe(&st);
+                                        hputs(st.buf, status_key, "blocked");
+                                        hashpipe_status_unlock_safe(&st);
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        hashpipe_error(__FUNCTION__, "error waiting for free databuf");
+
+                                        // -------------------------------------------------------------- //
+                                        // Let downstream thread know it should also quit
+                                        // -------------------------------------------------------------- //
+                                        // Create a header for a dummy block
+                                        header = hpguppi_databuf_header(db, block_idx);
+
+                                        // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                                        hputi8(header, "PKTSTART", pktstop);
+                                        hputi8(header, "PKTIDX", pktstop);
+                                        hputi8(header, "PKTSTOP", pktstop);
+                                        hputi4(header, "SUBBAND", s);
+
+#if 1 // Needed?
+      // Initialize block
+                                        ptr = hpguppi_databuf_data(db, block_idx);
+
+                                        // Copy block of zeros to block in buffer
+                                        memcpy(ptr, zero_blk, N_INPUT);
+
+                                        // Mark block as full
+                                        hpguppi_input_databuf_set_filled(db, block_idx);
+#endif
+
+                                        pthread_exit(NULL);
+                                        break;
+                                    }
+                                }
+
+                                // Create a header for a dummy block
+                                header = hpguppi_databuf_header(db, block_idx);
+                                hashpipe_status_lock_safe(&st);
+                                hputs(st.buf, status_key, "receiving");
+                                memcpy(header, &header_buf, headersize);
+                                hashpipe_status_unlock_safe(&st);
+
+                                // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
+                                hputi8(header, "PKTIDX", pktstop);
+                                hputi4(header, "SUBBAND", s);
+
+#if 1 // Needed?
+      // Initialize block
+                                ptr = hpguppi_databuf_data(db, block_idx);
+
+                                // Copy block of zeros to block in buffer
+                                memcpy(ptr, zero_blk, N_INPUT);
+                                printf("STRIDE INPUT: After memcpy() N_INPUT = %ld \n", N_INPUT);
+#endif
+                                // End of scan for all sub-bands
+                                printf("STRIDE INPUT: cur_pktidx = %ld and pktstop = %ld \n", cur_pktidx, pktstop);
+                            }
+                            else
+                            {
+                                // Get raw file size in order to calculate the number of blocks in the file
+                                raw_file_size = get_file_size(fdin);
+                            }
                         }
                         else
                         {
