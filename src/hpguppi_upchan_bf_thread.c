@@ -531,7 +531,7 @@ static void *run(hashpipe_thread_args_t *args)
       {
         n_samp = n_samp_spec;
       }
-      else if (n_samp > (3 * n_samp_spec / 2) && n_samp < 2 * n_samp_spec)
+      else if ((n_ant_config == (N_ANT/2)) && (n_samp > (3 * n_samp_spec / 2)) && (n_samp < 2 * n_samp_spec))
       {
         n_samp = 2 * n_samp_spec;
       }
