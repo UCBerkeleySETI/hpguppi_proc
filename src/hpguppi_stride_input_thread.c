@@ -746,7 +746,7 @@ static void *run(hashpipe_thread_args_t *args)
                             printf("STRIDE INPUT: Subband index = %d and Block count = %d \n", s, block_count);
                             // Iterate through blocks in RAW files for a scan corresponding to a subband
                             block_count++;
-                            if (block_count >= nblocks)
+                            if (block_count > nblocks)
                             {
                                 extra_blks_flag = 1;
                             }
@@ -961,7 +961,7 @@ static void *run(hashpipe_thread_args_t *args)
                             printf("STRIDE INPUT: Time taken to read from RAW file = %f ms \n", read_time);
 #endif
 
-                            printf("STRIDE INPUT: Subband index = %d and Block count = %d \n", s, block_count);
+                            printf("STRIDE INPUT: Subband index = %d and Block count = %d and extra_blks_flag = %d \n", s, block_count, extra_blks_flag);
                             // Iterate through blocks in RAW files for a scan corresponding to a subband
                             block_count++;
                         }
