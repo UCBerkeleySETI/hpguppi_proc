@@ -1161,7 +1161,8 @@ static void *run(hashpipe_thread_args_t *args)
                     filenum++;
 
                     // Inform downstream thread about the number of time samples in a RAW file
-                    if(block_count <= nblocks){
+                    if (block_count <= nblocks)
+                    {
                         hputi4(st.buf, "NSAMP", block_count * n_samp_per_block);
                     }
 
@@ -1190,7 +1191,7 @@ static void *run(hashpipe_thread_args_t *args)
                         // Go to next sub-band or done with all sub-bands?
                         if (s < n_subband - 1)
                         {
-                            // Start of scan for subband s+1
+                            // Start of scan for subband s+2
                             sprintf(fname, "%s.%4.4d.raw", basefilename, filenum);
                             printf("STRIDE INPUT: Opening raw file '%s' of scan for subband = %d of %d \n", fname, (s + 2), n_subband);
                             fdin = open(fname, open_flags, 0644);
@@ -1278,6 +1279,21 @@ static void *run(hashpipe_thread_args_t *args)
                             {
                                 // Get raw file size in order to calculate the number of blocks in the file
                                 raw_file_size = get_file_size(fdin);
+
+                                if (extra_blks_flag == 1)
+                                {
+                                    // Reset block count since it is the end of a scan
+                                    block_count = 0;
+
+                                    // Last blocks from the RAW file of the scan are placed within the shared mem buffer block
+                                    // and it is set as filled in order to start the next subband fresh at block_count=0
+                                    // Mark block as full
+                                    hpguppi_input_databuf_set_filled(db, block_idx);
+                                    printf("STRIDE INPUT: After hpguppi_input_databuf_set_filled() block_idx = %d \n", block_idx);
+
+                                    // Setup for next block (dummy block)
+                                    block_idx = (block_idx + 1) % N_INPUT_BLOCKS;
+                                }
                             }
                         }
                         else
