@@ -308,6 +308,9 @@ static void *run(hashpipe_thread_args_t *args)
     // Get subband index
     hgeti4(p_header, "SUBBAND", &subband_idx); // Get current index of subband being processed
 
+    // Number of time samples in a RAW file
+    hgeti4(p_header, "NSAMP", &n_samp);
+
     // Read pktidx, pktstart, pktstop from header
     hgeti8(p_header, "PKTIDX", &pktidx);
     hgeti8(p_header, "PKTSTART", &pktstart);
@@ -514,12 +517,6 @@ static void *run(hashpipe_thread_args_t *args)
       fch1 = (obsfreq - (((n_chan_per_node - 1) / (2*n_chan_per_node)) * obsbw) - (floor(n_fft / 2) * (obsbw/(n_fft * n_chan_per_node))));
 
       n_samp_spec = n_fft * n_win_spec;
-
-      // Acquire these values each block because the number of time samples could vary
-      // Number of time samples in a RAW file
-      hashpipe_status_lock_safe(st);
-      hgeti4(st->buf, "NSAMP", &n_samp);
-      hashpipe_status_unlock_safe(st);
 
       printf("UBF: n_samp = %d\n", n_samp);
 
@@ -888,12 +885,6 @@ static void *run(hashpipe_thread_args_t *args)
         fb_fd_write_header(fdraw[b], &fb_hdr);
       }
     }
-
-    // Acquire these values each block because the number of time samples could vary
-    // Number of time samples in a RAW file
-    hashpipe_status_lock_safe(st);
-    hgeti4(st->buf, "NSAMP", &n_samp);
-    hashpipe_status_unlock_safe(st);
 
     printf("UBF: n_samp = %d\n", n_samp);
 

@@ -540,6 +540,8 @@ static void *run(hashpipe_thread_args_t *args)
                         n_coarse = (int)obsnchan / nants;
                         n_coarse_proc = n_coarse / n_subband;
                         n_samp_per_block = (int)(blocsize / (2 * obsnchan * npol));
+                        // Inform downstream thread about the number of time samples in a RAW file
+                        hputi4(header, "NSAMP", nblocks * n_samp_per_block);
 
 #if VERBOSE2
                         printf("STRIDE INPUT: headersize = %d, directio = %d\n", headersize, directio);
@@ -746,7 +748,9 @@ static void *run(hashpipe_thread_args_t *args)
                             printf("STRIDE INPUT: Subband index = %d and Block count = %d \n", s, block_count);
                             // Iterate through blocks in RAW files for a scan corresponding to a subband
                             block_count++;
-                            if (block_count > nblocks)
+
+                            // Read extra blocks if they exist due to replacement of missing blocks with blocks of zeros
+                            if ((block_count >= nblocks) && ((raw_file_size - cur_pos) >= (blocsize + headersize)))
                             {
                                 extra_blks_flag = 1;
                             }
@@ -758,9 +762,6 @@ static void *run(hashpipe_thread_args_t *args)
                         {
                             if (block_count == nblocks)
                             {
-                                // Inform downstream thread about the number of time samples in a RAW file
-                                hputi4(st.buf, "NSAMP", block_count * n_samp_per_block);
-
                                 // Mark block as full
                                 hpguppi_input_databuf_set_filled(db, block_idx);
 
@@ -1160,12 +1161,6 @@ static void *run(hashpipe_thread_args_t *args)
                     printf("STRIDE INPUT: Closed RAW file! \n");
                     filenum++;
 
-                    // Inform downstream thread about the number of time samples in a RAW file
-                    if (block_count <= nblocks)
-                    {
-                        hputi4(st.buf, "NSAMP", block_count * n_samp_per_block);
-                    }
-
                     sprintf(fname, "%s.%4.4d.raw", basefilename, filenum);
                     printf("STRIDE INPUT: Opening next raw file '%s'\n", fname);
                     fdin = open(fname, open_flags, 0644);
@@ -1372,6 +1367,9 @@ static void *run(hashpipe_thread_args_t *args)
 #endif
                             // End of scan for all sub-bands
                             printf("STRIDE INPUT: cur_pktidx = %ld and pktstop = %ld \n", cur_pktidx, pktstop);
+
+                            // Set extra_blks_flag to 0 since this is the end of the scan
+                            extra_blks_flag = 0;
                         }
 
                         // Reset previous pktidx to 0 for the next scan
@@ -1460,6 +1458,10 @@ static void *run(hashpipe_thread_args_t *args)
                         n_coarse = (int)obsnchan / nants;
                         n_coarse_proc = n_coarse / n_subband;
                         n_samp_per_block = (int)(blocsize / (2 * obsnchan * npol));
+                        nblocks = 128; // Set to default since there isn't a precise way to calculate the number of blocks
+                        printf("STRIDE INPUT: Number of blocks set to default of 128 since there isn't a precise way to calculate it");
+                        // Inform downstream thread about the number of time samples in a RAW file
+                        hputi4(header, "NSAMP", nblocks * n_samp_per_block);
 
 #if VERBOSE2
                         printf("STRIDE INPUT: payload_start = %ld \n", payload_start);
@@ -1490,9 +1492,6 @@ static void *run(hashpipe_thread_args_t *args)
                     {
                         close(fdin);
                         filenum++;
-
-                        // Inform downstream thread about the number of time samples in a RAW file
-                        hputi4(st.buf, "NSAMP", block_count * n_samp_per_block);
 
                         sprintf(fname, "%s.%4.4d.raw", basefilename, filenum);
                         printf("STRIDE INPUT: Opening next raw file '%s'\n", fname);
