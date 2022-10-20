@@ -340,7 +340,7 @@ static void *run(hashpipe_thread_args_t *args)
         block_count = 0;
         printf("Block count = %d, and memory including GPU memory has been freed. \n", block_count);
       }
-      for (int b = 0; b < nbeams; b++)
+      for (int b = 0; b < (nbeams+1); b++)
       {
         // If file open, close it
         if (fdraw[b] != -1)
