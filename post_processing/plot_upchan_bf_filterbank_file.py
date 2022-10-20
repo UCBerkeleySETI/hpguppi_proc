@@ -8,7 +8,7 @@ import numpy as np
 import sys
 
 # Open binary file containing beamformer output
-filename = "/datag/users/mruzinda/o/guppi_raw_bfr5_test_JBLAH-BLAH.B01.SB00.B01.fil"
+filename = "/datag/users/mruzinda/o/guppi_raw_bfr5_test_JBLAH-BLAH.B01.SB00.B00.fil"
 
 # Read file contents: np.fromfile(filename, dtype=float, count=- 1, sep='', offset=0)
 with open(filename, 'rb') as f:
