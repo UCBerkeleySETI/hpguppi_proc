@@ -632,6 +632,7 @@ static void *run(hashpipe_thread_args_t *args)
                                 // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
                                 if (fdin == -1)
                                 {
+                                    hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                     break;
                                 }
                             }
@@ -640,6 +641,7 @@ static void *run(hashpipe_thread_args_t *args)
                             // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
                             if (fdin == -1)
                             {
+                                hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                 // Set last block of scan as filled then create dummy block
                                 // Mark block as full
                                 hpguppi_input_databuf_set_filled(db, block_idx);
@@ -849,6 +851,7 @@ static void *run(hashpipe_thread_args_t *args)
                                 // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
                                 if (fdin == -1)
                                 {
+                                    hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                     break;
                                 }
                             }
@@ -857,6 +860,7 @@ static void *run(hashpipe_thread_args_t *args)
                             // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
                             if (fdin == -1)
                             {
+                                hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                 // Set last block of scan as filled then create dummy block
                                 // Mark block as full
                                 hpguppi_input_databuf_set_filled(db, block_idx);
@@ -1039,6 +1043,7 @@ static void *run(hashpipe_thread_args_t *args)
                                 // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
                                 if (fdin == -1)
                                 {
+                                    hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                     break;
                                 }
                             }
@@ -1046,6 +1051,7 @@ static void *run(hashpipe_thread_args_t *args)
                             // fdin = -1, inform the downstream thread processing is over, and wait for new RAW files
                             if (fdin == -1)
                             {
+                                hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                 // Set last block of scan as filled then create dummy block
                                 // Mark block as full
                                 hpguppi_input_databuf_set_filled(db, block_idx);
@@ -1195,6 +1201,7 @@ static void *run(hashpipe_thread_args_t *args)
                             // then the scan has essentially ended so clean up and wait for new RAW files
                             if (fdin == -1)
                             {
+                                hashpipe_error(__FUNCTION__, "RAW files deleted or removed before reading was complete.");
                                 // Set last block of scan as filled then create dummy block
                                 // Mark block as full
                                 hpguppi_input_databuf_set_filled(db, block_idx);
