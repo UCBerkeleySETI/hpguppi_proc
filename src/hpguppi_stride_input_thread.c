@@ -325,9 +325,17 @@ static void *run(hashpipe_thread_args_t *args)
                         hgets(st.buf, "RAWFILE", sizeof(cur_fname), cur_fname);
                         hashpipe_status_unlock_safe(&st);
 
+                        if (wait_filename == 0)
+                        { // Print "waiting for new RAW file name" only once
+                            wait_filename = 1;
+
+                            printf("STRIDE INPUT: Waiting for RAW file name! \n");
+                        }
+
                         // Will exit if thread has been cancelled
                         pthread_testcancel();
                     }
+                    wait_filename = 0;
                     // Check to see if RAWFILE is an absolute path
                     if (cur_fname[0] != '/')
                     {
