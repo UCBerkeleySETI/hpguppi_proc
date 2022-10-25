@@ -211,6 +211,15 @@ static void *run(hashpipe_thread_args_t *args)
     float time_taken_r = 0;
 #endif
 
+    // Clear keys in status buffer and set PROCSTAT to IDLE on startup
+    hashpipe_status_lock_safe(&st);
+    hdel(st.buf, "INPUTDIR");
+    hdel(st.buf, "BFRDIR");
+    hdel(st.buf, "OUTDIR");
+    hdel(st.buf, "RAWFILE");
+    hputs(st.buf, "PROCSTAT", "IDLE");
+    hashpipe_status_unlock_safe(&st);
+
     int wait_filename = 0; // Flag to print "waiting for new RAW file name" only once
     int a = 0;             // Antenna index
     int c = 0;             // Coarse channel index
