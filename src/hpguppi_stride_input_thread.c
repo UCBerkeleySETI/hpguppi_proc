@@ -136,7 +136,10 @@ static void *run(hashpipe_thread_args_t *args)
     char basefilename[200];
     char fname[256];
 
-    hgets(st.buf, "BASEFILE", sizeof(basefilename), basefilename);
+    // Do we really need to get basefilename here???
+    hashpipe_status_lock_safe(&st);
+        hgets(st.buf, "BASEFILE", sizeof(basefilename), basefilename);
+    hashpipe_status_unlock_safe(&st);
 
     char cur_fname[200] = {0};
     char cur_fname_nopath[200] = {0};
@@ -244,7 +247,9 @@ static void *run(hashpipe_thread_args_t *args)
             // -------------------------------------------------------------- //
             // Write index of subband to status buffer
             // -------------------------------------------------------------- //
-            hputi4(st.buf, "SUBBAND", s);
+            hashpipe_status_lock_safe(&st);
+                hputi4(st.buf, "SUBBAND", s);
+            hashpipe_status_unlock_safe(&st);
 
             // -------------------------------------------------------------- //
             // At the beginning of a file so set end_of_scan == 0
@@ -308,7 +313,9 @@ static void *run(hashpipe_thread_args_t *args)
 
                 // Check keyword in status memory to see whether bfr5 file exists
                 // If it doesn't exist, set fdin equal to -1 and wait for new RAW file name (new scan)
-                hgeti4(st.buf, "BFR5FID", &bfr5fid);
+                hashpipe_status_lock_safe(&st);
+                    hgeti4(st.buf, "BFR5FID", &bfr5fid);
+                hashpipe_status_unlock_safe(&st);
 
                 // -------------------------------------------------------------- //
                 // Read raw files
@@ -400,7 +407,9 @@ static void *run(hashpipe_thread_args_t *args)
                         printf("STRIDE INPUT: File name with no path: %s \n", new_base);
 #endif
 
-                        hputs(st.buf, "BASEFILE", new_base);
+                        hashpipe_status_lock_safe(&st);
+                            hputs(st.buf, "BASEFILE", new_base);
+                        hashpipe_status_unlock_safe(&st);
                     }
                     else
                     {
