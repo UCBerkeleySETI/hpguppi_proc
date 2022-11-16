@@ -289,12 +289,10 @@ static void *run(hashpipe_thread_args_t *args)
                         header = hpguppi_databuf_header(db, block_idx);
 
                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                        hashpipe_status_lock_safe(&st);
                         hputi8(header, "PKTSTART", pktstop);
                         hputi8(header, "PKTIDX", pktstop);
                         hputi8(header, "PKTSTOP", pktstop);
                         hputi4(header, "SUBBAND", s);
-                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -452,12 +450,10 @@ static void *run(hashpipe_thread_args_t *args)
                         header = hpguppi_databuf_header(db, block_idx);
 
                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                        hashpipe_status_lock_safe(&st);
                         hputi8(header, "PKTSTART", pktstop);
                         hputi8(header, "PKTIDX", pktstop);
                         hputi8(header, "PKTSTOP", pktstop);
                         hputi4(header, "SUBBAND", s);
-                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -478,9 +474,7 @@ static void *run(hashpipe_thread_args_t *args)
 
                     headersize = get_header_size(fdin, header_buf, MAX_HDR_SIZE);
 
-                    hashpipe_status_lock_safe(&st);
                     hgeti4(header_buf, "BLOCSIZE", &blocsize);
-                    hashpipe_status_unlock_safe(&st);
 
                     nblocks = raw_file_size / (headersize + blocsize); // Assume this value is always an integer value for now.
                     printf("STRIDE INPUT: Number of RAW blocks = %d \n", nblocks);
@@ -540,11 +534,12 @@ static void *run(hashpipe_thread_args_t *args)
                         }
 
                         hashpipe_status_lock_safe(&st);
-                        hputs(st.buf, status_key, "receiving");
-                        hputi4(header, "SUBBAND", s);                        
+                        hputs(st.buf, status_key, "receiving");                       
                         hashpipe_status_unlock_safe(&st);
 
                         memcpy(header, header_buf, headersize);
+                        
+                        hputi4(header, "SUBBAND", s); 
 
 
                         directio = hpguppi_read_directio_mode(header);
@@ -556,7 +551,6 @@ static void *run(hashpipe_thread_args_t *args)
                             headersize = (headersize + 511) & ~511;
                         }
                         payload_start = lseek(fdin, headersize - MAX_HDR_SIZE, SEEK_CUR);
-                        hashpipe_status_lock_safe(&st);
                         hgeti4(header_buf, "BLOCSIZE", &blocsize);
                         hgeti8(header_buf, "PKTIDX", &cur_pktidx);
                         hgeti8(header_buf, "PKTSTART", &pktstart);
@@ -565,21 +559,16 @@ static void *run(hashpipe_thread_args_t *args)
                         // Descriptions of the variables below are at the initializations
                         hgeti4(header_buf, "NANTS", &nants);
                         hgeti4(header_buf, "NPOL", &npol);
-                        hashpipe_status_unlock_safe(&st);
                         if (npol > 1)
                         {
                             npol = 2;
                         }
-                        hashpipe_status_lock_safe(&st);
                         hgeti4(header_buf, "OBSNCHAN", &obsnchan);
-                        hashpipe_status_unlock_safe(&st);
                         n_coarse = (int)obsnchan / nants;
                         n_coarse_proc = n_coarse / n_subband;
                         n_samp_per_block = (int)(blocsize / (2 * obsnchan * npol));
                         // Inform downstream thread about the number of time samples in a RAW file
-                        hashpipe_status_lock_safe(&st);
                         hputi4(header, "NSAMP", nblocks * n_samp_per_block);
-                        hashpipe_status_unlock_safe(&st);
 
 #if VERBOSE2
                         printf("STRIDE INPUT: headersize = %d, directio = %d\n", headersize, directio);
@@ -712,12 +701,10 @@ static void *run(hashpipe_thread_args_t *args)
                                         header = hpguppi_databuf_header(db, block_idx);
 
                                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                        hashpipe_status_lock_safe(&st);
                                         hputi8(header, "PKTSTART", pktstop);
                                         hputi8(header, "PKTIDX", pktstop);
                                         hputi8(header, "PKTSTOP", pktstop);
                                         hputi4(header, "SUBBAND", s);
-                                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -744,10 +731,8 @@ static void *run(hashpipe_thread_args_t *args)
                                 memcpy(header, header_buf, headersize);
 
                                 // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                hashpipe_status_lock_safe(&st);
                                 hputi8(header, "PKTIDX", pktstop);
                                 hputi4(header, "SUBBAND", s);
-                                hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -837,12 +822,10 @@ static void *run(hashpipe_thread_args_t *args)
                                         header = hpguppi_databuf_header(db, block_idx);
 
                                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                        hashpipe_status_lock_safe(&st);
                                         hputi8(header, "PKTSTART", pktstop);
                                         hputi8(header, "PKTIDX", pktstop);
                                         hputi8(header, "PKTSTOP", pktstop);
                                         hputi4(header, "SUBBAND", s);
-                                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -938,12 +921,10 @@ static void *run(hashpipe_thread_args_t *args)
                                         header = hpguppi_databuf_header(db, block_idx);
 
                                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                        hashpipe_status_lock_safe(&st);
                                         hputi8(header, "PKTSTART", pktstop);
                                         hputi8(header, "PKTIDX", pktstop);
                                         hputi8(header, "PKTSTOP", pktstop);
                                         hputi4(header, "SUBBAND", s);
-                                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -970,10 +951,8 @@ static void *run(hashpipe_thread_args_t *args)
                                 memcpy(header, header_buf, headersize);
 
                                 // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                hashpipe_status_lock_safe(&st);
                                 hputi8(header, "PKTIDX", pktstop);
                                 hputi4(header, "SUBBAND", s);
-                                hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1026,10 +1005,7 @@ static void *run(hashpipe_thread_args_t *args)
                         if (block_count == 0)
                         {
                             headersize = get_header_size(fdin, header_buf, MAX_HDR_SIZE);
-                            
-                            hashpipe_status_lock_safe(&st);
                             hgeti4(header_buf, "PIPERBLK", &piperblk);
-                            hashpipe_status_unlock_safe(&st);
 
                             // Copy the same header info from previous block to zero block in buffer
                             header = hpguppi_databuf_header(db, block_idx);
@@ -1059,9 +1035,7 @@ static void *run(hashpipe_thread_args_t *args)
                         // Set pktidx in the header of the shared memory buffer block (header_buf)
                         zero_blk_pktidx -= n_missed_blks * piperblk;
                         // hputi8(header_buf, "PKTIDX", zero_blk_pktidx);
-                        hashpipe_status_lock_safe(&st);
                         hputi8(header, "PKTIDX", zero_blk_pktidx);
-                        hashpipe_status_unlock_safe(&st);
 
                         // Copy block of zeros to block in buffer
                         memcpy(&ptr[block_count * Niq * npol * n_coarse_proc * nants * n_samp_per_block], zero_blk, Niq * npol * n_coarse_proc * nants * n_samp_per_block);
@@ -1140,12 +1114,10 @@ static void *run(hashpipe_thread_args_t *args)
                                         header = hpguppi_databuf_header(db, block_idx);
 
                                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                        hashpipe_status_lock_safe(&st);
                                         hputi8(header, "PKTSTART", pktstop);
                                         hputi8(header, "PKTIDX", pktstop);
                                         hputi8(header, "PKTSTOP", pktstop);
                                         hputi4(header, "SUBBAND", s);
-                                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1172,10 +1144,8 @@ static void *run(hashpipe_thread_args_t *args)
                                 memcpy(header, header_buf, headersize);
 
                                 // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                hashpipe_status_lock_safe(&st);
                                 hputi8(header, "PKTIDX", pktstop);
                                 hputi4(header, "SUBBAND", s);
-                                hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1248,9 +1218,7 @@ static void *run(hashpipe_thread_args_t *args)
                         printf("STRIDE INPUT: RAW filename: %s doesn't exist and end of file has not been reached so move on to next subband \n", fname);
 
                         // Inform the downstream thread that we have reached the end of a scan
-                        hashpipe_status_lock_safe(&st);
-                        hgeti8(header_buf, "PKTIDX", &cur_pktidx); // Needed???
-                        hashpipe_status_unlock_safe(&st);
+                        hgeti8(header_buf, "PKTIDX", &cur_pktidx); // Needed??
 
                         // Go to next sub-band or done with all sub-bands?
                         if (s < n_subband - 1)
@@ -1297,12 +1265,10 @@ static void *run(hashpipe_thread_args_t *args)
                                         header = hpguppi_databuf_header(db, block_idx);
 
                                         // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                        hashpipe_status_lock_safe(&st);
                                         hputi8(header, "PKTSTART", pktstop);
                                         hputi8(header, "PKTIDX", pktstop);
                                         hputi8(header, "PKTSTOP", pktstop);
                                         hputi4(header, "SUBBAND", s);
-                                        hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1328,10 +1294,8 @@ static void *run(hashpipe_thread_args_t *args)
                                 memcpy(header, header_buf, headersize);
 
                                 // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                hashpipe_status_lock_safe(&st);
                                 hputi8(header, "PKTIDX", pktstop);
                                 hputi4(header, "SUBBAND", s);
-                                hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1399,12 +1363,10 @@ static void *run(hashpipe_thread_args_t *args)
                                     header = hpguppi_databuf_header(db, block_idx);
 
                                     // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                                    hashpipe_status_lock_safe(&st);
                                     hputi8(header, "PKTSTART", pktstop);
                                     hputi8(header, "PKTIDX", pktstop);
                                     hputi8(header, "PKTSTOP", pktstop);
                                     hputi4(header, "SUBBAND", s);
-                                    hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1430,10 +1392,8 @@ static void *run(hashpipe_thread_args_t *args)
                             memcpy(header, header_buf, headersize);
 
                             // Send dummy block with PKTIDX set to PKTSTOP (Make sure that PKTIDX is set to PKTSTOP)
-                            hashpipe_status_lock_safe(&st);
                             hputi8(header, "PKTIDX", pktstop);
                             hputi4(header, "SUBBAND", s);
-                            hashpipe_status_unlock_safe(&st);
 
 #if 1 // Needed?
       // Initialize block
@@ -1521,7 +1481,6 @@ static void *run(hashpipe_thread_args_t *args)
 #endif
 
                         payload_start = lseek(fdin, headersize - MAX_HDR_SIZE, SEEK_CUR);
-                        hashpipe_status_lock_safe(&st);
                         hgeti4(header_buf, "BLOCSIZE", &blocsize);
                         hgeti8(header_buf, "PKTIDX", &cur_pktidx);
                         hgeti8(header_buf, "PKTSTART", &pktstart);
@@ -1530,23 +1489,18 @@ static void *run(hashpipe_thread_args_t *args)
                         // Descriptions of the variables below are at the initializations
                         hgeti4(header_buf, "NANTS", &nants);
                         hgeti4(header_buf, "NPOL", &npol);
-                        hashpipe_status_unlock_safe(&st);
                         if (npol > 1)
                         {
                             npol = 2;
                         }
-                        hashpipe_status_lock_safe(&st);
                         hgeti4(header_buf, "OBSNCHAN", &obsnchan);
-                        hashpipe_status_unlock_safe(&st);
                         n_coarse = (int)obsnchan / nants;
                         n_coarse_proc = n_coarse / n_subband;
                         n_samp_per_block = (int)(blocsize / (2 * obsnchan * npol));
                         nblocks = 128; // Set to default since there isn't a precise way to calculate the number of blocks
                         printf("STRIDE INPUT: Number of blocks set to default of 128 since there isn't a precise way to calculate it");
                         // Inform downstream thread about the number of time samples in a RAW file
-                        hashpipe_status_lock_safe(&st);
                         hputi4(header, "NSAMP", nblocks * n_samp_per_block);
-                        hashpipe_status_unlock_safe(&st);
 
 #if VERBOSE2
                         printf("STRIDE INPUT: payload_start = %ld \n", payload_start);
@@ -1621,10 +1575,8 @@ static void *run(hashpipe_thread_args_t *args)
 
                                 memcpy(header, header_buf, headersize);
 
-                                hashpipe_status_lock_safe(&st);
                                 hputi8(header, "PKTIDX", pktstop);
                                 hputi4(header, "SUBBAND", s);
-                                hashpipe_status_unlock_safe(&st);
 
                                 // Initialize block
                                 ptr = hpguppi_databuf_data(db, block_idx);

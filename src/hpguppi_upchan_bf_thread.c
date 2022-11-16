@@ -304,8 +304,7 @@ static void *run(hashpipe_thread_args_t *args)
 
     // Get pointer to current block's header
     p_header = hpguppi_databuf_header(db, curblock);
-
-    hashpipe_status_lock_safe(st);
+    
     // Get subband index
     hgeti4(p_header, "SUBBAND", &subband_idx); // Get current index of subband being processed
     // Number of time samples in a RAW file
@@ -314,7 +313,6 @@ static void *run(hashpipe_thread_args_t *args)
     hgeti8(p_header, "PKTIDX", &pktidx);
     hgeti8(p_header, "PKTSTART", &pktstart);
     hgeti8(p_header, "PKTSTOP", &pktstop);
-    hashpipe_status_unlock_safe(st);
 
     // if((pktidx >= pktstop) && (subband_idx == (n_subband-1) || subband_idx == 0)){
     if (pktidx >= pktstop)
@@ -395,7 +393,6 @@ static void *run(hashpipe_thread_args_t *args)
     hashpipe_status_unlock_safe(st);
 
     // Get values for calculations at varying points in processing
-    hashpipe_status_lock_safe(st);
     hgetu8(p_header, "SYNCTIME", &synctime);
     hgetu8(p_header, "HCLOCKS", &hclocks);
     hgetu4(p_header, "FENCHAN", &fenchan);
@@ -412,6 +409,8 @@ static void *run(hashpipe_thread_args_t *args)
     hgets(p_header, "SRC_NAME", sizeof(src_name), src_name);
     hgetr8(p_header, "OBSBW", &obsbw);
     hgetu8(p_header, "BLOCSIZE", &raw_blocsize); // Raw file block size
+
+    hashpipe_status_lock_safe(st);
     hgets(st->buf, "BASEFILE", sizeof(raw_basefilename), raw_basefilename);
     hgets(st->buf, "OUTDIR", sizeof(outdir), outdir);
     hashpipe_status_unlock_safe(st);
