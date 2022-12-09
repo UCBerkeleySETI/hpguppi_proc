@@ -222,7 +222,7 @@ static void *run(hashpipe_thread_args_t *args)
     hputs(st.buf, "PROCSTAT", "IDLE");
     hashpipe_status_unlock_safe(&st);
 
-    int wait_filename = 0; // Flag to print "waiting for new RAW file name" only once
+    int wait_filename = 0; // Flag to print  "waiting for new RAW file name" only once
     int a = 0;             // Antenna index
     int c = 0;             // Coarse channel index
     // int t = 0; // Time sample index
