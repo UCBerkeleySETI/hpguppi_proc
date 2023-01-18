@@ -3,9 +3,8 @@ AC_DEFUN([AX_CHECK_BFR5C99],
 [AC_PREREQ([2.65])dnl
 AC_ARG_WITH([bfr5c99],
             AC_HELP_STRING([--with-bfr5c99=DIR],
-                           [Location of BFR5C99 files (/usr/local)]),
-            [BFR5C99DIR="$withval"],
-            [BFR5C99DIR=/usr/local])
+                           [Location of BFR5C99 files (/home/mruzinda/bfr5c99/src)]),
+            [BFR5C99DIR="$withval"])
 
 AC_CHECK_FILE([${BFR5C99DIR}/include/bfr5.h],
               # Found
