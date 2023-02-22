@@ -8,20 +8,22 @@ import numpy as np
 import sys
 
 # Open binary file containing beamformer output
-filename = "/datag/users/mruzinda/o/guppi_raw_bfr5_test_JBLAH-BLAH.B01.SB00.B01.fil"
+#filename = "/datag/users/mruzinda/o/guppi_raw_bfr5_test_JBLAH-BLAH.B01.SB00.B01.fil"
+filename = "/datag/users/mruzinda/o/synth_multi_ant_df-sig-multiBEAM_0.SB08.B00.fil"
 
 # Read file contents: np.fromfile(filename, dtype=float, count=- 1, sep='', offset=0)
 with open(filename, 'rb') as f:
-    f.seek(393)
+    #f.seek(393)
+    f.seek(377)
     contents_float = np.fromfile(f, dtype=np.float32)
 
 print(len(contents_float))
 print(contents_float[0])
 
-telescope_flag = "MK" # Observatory/radio telescope in use
-mode_flag = "4k" # Mode of operation
+telescope_flag = "VLA" #"MK" # Observatory/radio telescope in use
+mode_flag = "req" #"4k" # Mode of operation
 num_raw_files = 3 # Number of RAW files
-N_fine = 5120000
+N_fine = 131072 #5120000
 
 # Array dimensions
 # MeerKAT specs
@@ -44,15 +46,16 @@ if telescope_flag == "MK":
 
 # VLASS specs
 if telescope_flag == "VLA":
-    N_coarse = 1
+    N_coarse = 4
     # Required
     if mode_flag == "req":
-        N_time = 32*num_raw_files #40 # STI windows
-        N_fine = 156672 #128000
-        N_beam = 1 # Including ncoherent beam # 64
+        N_win = 16 # The number of FFT windows
+        N_time = N_win*num_raw_files #40 # STI windows
+        N_fine = 131072 #128000
+        N_beam = 1 # Including incoherent beam # 64
     # Desired
     if mode_flag == "des":
-        N_beam = 1 # Including ncoherent beam # 64
+        N_beam = 1 # Including incoherent beam # 64
         # Number of points of the FFT
         if N_fine == 5120000:
             N_time = 2*num_raw_files # STI windows
@@ -65,6 +68,11 @@ if telescope_flag == "VLA":
 
 incoherent_beam_idx = N_beam-1
 N_elements = int(N_time*N_coarse*N_fine*N_beam)
+print('N_time = '+ str(N_time))
+print('N_coarse = '+ str(N_coarse))
+print('N_fine = '+ str(N_fine))
+print('N_beam = '+ str(N_beam))
+print('N_elements = '+ str(N_elements))
 
 #define pow_bf_idx(f, c, s, b, Nf, Nc, Ns)
 # Reshape array to 3D -> Fine channel X Coarse channel X Time samples X Beams

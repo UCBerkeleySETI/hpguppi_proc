@@ -172,7 +172,7 @@ static void *run(hashpipe_thread_args_t *args)
   float time_taken = 0;
   float time_taken_w = 0;
 
-  int telescope_flag = 1;
+  int telescope_flag = 0;
   uint64_t synctime = 0;
   uint64_t hclocks = 1;
   uint32_t fenchan = 1;
@@ -195,7 +195,7 @@ static void *run(hashpipe_thread_args_t *args)
   double block_midtime = 0;
   double time_array_midpoint = 0;
 
-  hid_t file_id, npol_id, nbeams_id, obs_id, src_id, cal_all_id, delays_id, time_array_id, ra_id, dec_id, sid1, sid2, sid4, sid5, sid6, src_dspace_id, obs_type, native_src_type; // native_obs_type; // identifiers //
+  hid_t file_id, npol_id, nbeams_id, obs_id, src_id, cal_all_id, delays_id, time_array_id, ra_id, dec_id, sid1, sid2, sid4, sid5, sid6, src_dspace_id, obs_type, native_obs_type, native_src_type; // identifiers //
   herr_t status, cal_all_elements, delays_elements, time_array_elements, ra_elements, dec_elements, src_elements;
 
   hid_t reim_tid;
@@ -213,8 +213,7 @@ static void *run(hashpipe_thread_args_t *args)
   uint64_t npol;
   hvl_t *src_names_str;
   char *p_end;
-  //int hdf5_obsidsize;
-  hvl_t *hdf5_obsid;
+  int hdf5_obsidsize;
 
   int time_array_idx = 0; // time_array index
   FILE *coeffptr;
@@ -533,10 +532,10 @@ static void *run(hashpipe_thread_args_t *args)
       }
 
       // Number of time samples used for FFT (Number of FFT points)
-      n_time_int = 1; // n_samp / n_fft;
+      n_time_int = n_samp / n_fft;
 
       // Number of spectra windows
-      n_win =  n_samp / n_fft; // n_time_int;
+      n_win = n_time_int;
 
       // Number of STI windows
       n_sti = n_win / n_time_int;
@@ -553,7 +552,7 @@ static void *run(hashpipe_thread_args_t *args)
         // Replace colons in raw_obsid with hyphens since OBSID is being used as bfr5 file name
         for (int i = 0; i < strlen(raw_obsid); i++)
         {
-          if ((raw_obsid[i] == ':') || (raw_obsid[i] == '.'))
+          if (raw_obsid[i] == ':')
           {
             raw_obsid[i] = '-';
           }
@@ -599,29 +598,15 @@ static void *run(hashpipe_thread_args_t *args)
         // -------------Read obsid first----------------- //
         // Open an existing dataset. //
         obs_id = H5Dopen(file_id, "/obsinfo/obsid", H5P_DEFAULT);
-
-        // Reading a fixed length obsid string (MeerKAT RAW file uses fixed length string) //
         // Get obsid data type //
-        //obs_type = H5Dget_type(obs_id);
-        //native_obs_type = H5Tget_native_type(obs_type, H5T_DIR_DEFAULT);
-        //hdf5_obsidsize = (int)H5Tget_size(native_obs_type);
-
+        obs_type = H5Dget_type(obs_id);
+        native_obs_type = H5Tget_native_type(obs_type, H5T_DIR_DEFAULT);
+        hdf5_obsidsize = (int)H5Tget_size(native_obs_type);
         // Allocate memory to string array
-        //char hdf5_obsid[hdf5_obsidsize + 1];
-        //hdf5_obsid[hdf5_obsidsize] = '\0'; // Terminate string
-
+        char hdf5_obsid[hdf5_obsidsize + 1];
+        hdf5_obsid[hdf5_obsidsize] = '\0'; // Terminate string
         // Read the dataset. //
-        //status = H5Dread(obs_id, native_obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
-
-        // Reading a variable length obsid string (COSMIC RAW file seems to use variable length string)//
-        obs_type = H5Tvlen_create(H5T_NATIVE_CHAR);
-        hdf5_obsid =  malloc((int)1 * sizeof(hvl_t));
-        
-        // Read the dataset. //
-        status = H5Dread(obs_id, obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
-
-        printf("%d: len: %d, str is: %.*s\n", 0, (int)hdf5_obsid[0].len, (int)hdf5_obsid[0].len, (char *)hdf5_obsid[0].p);
-
+        status = H5Dread(obs_id, native_obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
         // Close the dataset. //
         status = H5Dclose(obs_id);
         // -----------------------------------------------//
@@ -651,17 +636,17 @@ static void *run(hashpipe_thread_args_t *args)
 
         // Need to initialize these obsid variables
         // Figure out how to read them first
-        if (raw_obsid == (char *)hdf5_obsid[0].p)
+        if (raw_obsid == hdf5_obsid)
         {
           printf("UBF: OBSID in RAW file and HDF5 file match!\n");
           printf("UBF: raw_obsid  = %s \n", raw_obsid);
-          printf("UBF: hdf5_obsid = %.*s \n", (int)hdf5_obsid[0].len, (char *)hdf5_obsid[0].p);
+          printf("UBF: hdf5_obsid = %s \n", hdf5_obsid);
         }
         else
         {
           printf("UBF (Warning): OBSID in RAW file and HDF5 file DO NOT match!\n");
           printf("UBF: raw_obsid  = %s \n", raw_obsid);
-          printf("UBF: hdf5_obsid = %.*s \n", (int)hdf5_obsid[0].len, (char *)hdf5_obsid[0].p);
+          printf("UBF: hdf5_obsid = %s \n", hdf5_obsid);
         }
         // Read cal_all once per HDF5 file. It doesn't change through out the entire recording.
         // Read delayinfo once, get all values, and update when required
@@ -741,12 +726,7 @@ static void *run(hashpipe_thread_args_t *args)
 
         // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
         tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams, (int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
-        
-        if(telescope_flag == 0){
-          memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
-        }else if(telescope_flag == 1){
-          memcpy(bf_coefficients, tmp_coefficients, VLASS_N_COEFF * sizeof(float));
-        }
+        memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
 
         // Get basefilename with no source name using SRC_NAME from GUPPI RAW file
         char_offset = strstr(raw_basefilename, src_name);
@@ -806,13 +786,12 @@ static void *run(hashpipe_thread_args_t *args)
       // Open nbeams filterbank files to save a beam per file i.e. N_BIN*n_fft*sizeof(float) per file.
       // Added 1 to nbeams to account for the incoherent beam.
       // printf("UBF: Opening filterbank files \n");
-      printf("UBF: nbeams = %ld, actual_nbeams = %d\n", nbeams, actual_nbeams);
-      for (int b = 0; b < (actual_nbeams + 1); b++)
+      for (int b = 0; b < (nbeams + 1); b++)
       {
         if (sim_flag == 0)
         {
           // Set specified path to write filterbank files
-          if (b == actual_nbeams)
+          if (b == nbeams)
           {
             strcpy(fb_basefilename, outdir);
             strcat(fb_basefilename, "/");
@@ -863,8 +842,6 @@ static void *run(hashpipe_thread_args_t *args)
       }
       */
 
-      printf("UBF: Here 1\n");
-
       // Get center frequency of the first coarse channel of a subband
       sb_obsbw = chan_bw * n_coarse_proc;
       fch1_sb = subband_idx * sb_obsbw + fch1;
@@ -881,15 +858,14 @@ static void *run(hashpipe_thread_args_t *args)
       strncpy(fb_hdr.rawdatafile, raw_filename, 80);
       fb_hdr.rawdatafile[80] = '\0';
 
-      printf("UBF: Here 2\n");
       // Write filterbank header to output file
       // Added 1 to nbeams to account for the incoherent beam
-      for (int b = 0; b < (actual_nbeams + 1); b++)
+      for (int b = 0; b < (nbeams + 1); b++)
       {
         fb_hdr.ibeam = b;
         if (sim_flag == 0)
         {
-          if (b == actual_nbeams)
+          if (b == nbeams)
           {
             fb_hdr.src_raj = ra_data[0] * 12 / PI;   // RA of Boresight beam
             fb_hdr.src_dej = dec_data[0] * 180 / PI; // Dec of Boresight beam
@@ -923,20 +899,14 @@ static void *run(hashpipe_thread_args_t *args)
       n_samp = 2 * n_samp_spec;
     }
 
-    printf("UBF: n_samp = %d\n", n_samp);
-    printf("UBF: n_samp_spec = %d\n", n_samp_spec);
-    printf("UBF: n_fft = %d\n", n_fft);
-
     // Number of time samples used for FFT (Number of FFT points)
-    n_time_int = 1; // n_samp / n_fft;
+    n_time_int = n_samp / n_fft;
 
     // Number of spectra windows
-    n_win = n_samp / n_fft; // n_time_int;
-    printf("UBF: n_win = %d\n", n_win);
+    n_win = n_time_int;
 
     // Number of STI windows
     n_sti = n_win / n_time_int;
-    printf("UBF: n_sti = %d\n", n_sti);
 
     // Size of beamformer output
     blocksize = n_coarse_proc * n_fft * n_sti * sizeof(float);
@@ -956,13 +926,6 @@ static void *run(hashpipe_thread_args_t *args)
         coeffptr = fopen(coeff_fname, "wb");
 
         fwrite(bf_coefficients, sizeof(float), N_COEFF, coeffptr);
-
-        if(telescope_flag == 0){
-          fwrite(bf_coefficients, sizeof(float), N_COEFF, coeffptr);
-        }
-        else if(telescope_flag == 1){
-          fwrite(bf_coefficients, sizeof(float), VLASS_N_COEFF, coeffptr);
-        }
 
         fclose(coeffptr);
       }
@@ -995,11 +958,7 @@ static void *run(hashpipe_thread_args_t *args)
         // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
         tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams, (int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
 
-        if(telescope_flag == 0){
-          memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
-        }else if(telescope_flag == 1){
-          memcpy(bf_coefficients, tmp_coefficients, VLASS_N_COEFF * sizeof(float));
-        }
+        memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
 
         // Write coefficients to binary file for analysis with CASA
         if ((time_array_idx == 15) && (coeff_flag == 0))
@@ -1031,11 +990,11 @@ static void *run(hashpipe_thread_args_t *args)
 
     if (sim_flag == 0)
     {
-      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, bf_coefficients, (int)npol, (int)nants, (int)nbeams, (int)actual_nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag);
+      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, bf_coefficients, (int)npol, (int)nants, (int)nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag);
     }
     else if (sim_flag == 1)
     {
-      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, tmp_coefficients, (int)npol, (int)nants, (int)nbeams, (int)actual_nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag);
+      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, tmp_coefficients, (int)npol, (int)nants, (int)nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag);
     }
 
     // Set beamformer output (CUDA kernel before conversion to power), that is summing, to zero before moving on to next block
@@ -1053,7 +1012,7 @@ static void *run(hashpipe_thread_args_t *args)
     struct timespec tval_before_w, tval_after_w;
     clock_gettime(CLOCK_MONOTONIC, &tval_before_w);
 
-    for (int b = 0; b < (actual_nbeams + 1); b++)
+    for (int b = 0; b < (nbeams + 1); b++)
     {
       rv = write(fdraw[b], &output_data[b * n_coarse_proc * n_fft * n_sti], (size_t)blocksize);
       if (rv != blocksize)

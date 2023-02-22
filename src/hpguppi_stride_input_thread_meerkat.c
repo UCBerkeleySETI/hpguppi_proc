@@ -126,7 +126,7 @@ static void *run(hashpipe_thread_args_t *args)
     int64_t prev_pktidx;
     int64_t zero_blk_pktidx;
     int n_missed_blks = 0;
-    int telescope_flag = 1;
+    int telescope_flag = 0;
     char *zero_blk; // Block of zeros to replace dropped blocks
     zero_blk = (char *)calloc(N_INPUT, sizeof(char));
     int extra_blks_flag = 0; // If flag is set to 0, there are no extra blocks in this batch (set of blocks corresponding to the RAW file). Set to 1, then there are extra blocks

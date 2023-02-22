@@ -38,9 +38,9 @@
 
 
 // VLASS specs
-#define VLASS_N_TIME (10240000) // (5120000) // 1024000 with desired specs (~10 seconds) and 5120000 with required specs (~5 seconds)
-#define VLASS_N_FREQ (1) // 1 of 32 coarse channels
-#define VLASS_N_FFT  (128000) // Lowest frequency resolution
+#define VLASS_N_TIME (2097152) // (10240000) // (5120000) // 1024000 with desired specs (~10 seconds) and 5120000 with required specs (~5 seconds)
+#define VLASS_N_FREQ (4) // 1 of 32 coarse channels
+#define VLASS_N_FFT  (131072) // Lowest frequency resolution
 #define VLASS_N_BEAM (32) // Max number of beams
 #define VLASS_N_WIN  (VLASS_N_TIME/VLASS_N_FFT) // Number of spectral windows
 
@@ -98,7 +98,7 @@ void coeff_pin(float * data_coeff_pin, int telescope_flag);
 void unregister_data(void * data_unregister);
 void Cleanup_beamformer();
 void upchannelize(complex_t* data_tra, int n_ant_config, int n_pol, int n_chan, int n_samp); // Upchannelization
-float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag); // Run upchannelizer and beamformer
+float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int actual_n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag); // Run upchannelizer and beamformer
 #ifdef __cplusplus
 }
 #endif

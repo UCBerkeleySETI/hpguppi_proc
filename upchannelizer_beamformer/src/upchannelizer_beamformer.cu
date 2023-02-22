@@ -634,7 +634,7 @@ __global__ void beamformer_sti_ubf(float *bf_pow, float *bf_sti, int offset, int
 }
 
 // Run upchannelizer and beamformer
-float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, int n_pol, int n_ant, int n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag)
+float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, int n_pol, int n_ant, int n_beam, int actual_n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag)
 {
 
 	cudaError_t err_code;
@@ -754,8 +754,8 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 	}
 
 	// Copy input data from device to host
-	checkCuda_ubf(cudaMemcpy(data_out, (float *)d_data_tra2, n_beam * n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
-	checkCuda_ubf(cudaMemcpy(&data_out[n_beam * n_sti * n_samp * n_chan], d_bf_sti, n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
+	checkCuda_ubf(cudaMemcpy(data_out, (float *)d_data_tra2, actual_n_beam * n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
+	checkCuda_ubf(cudaMemcpy(&data_out[actual_n_beam * n_sti * n_samp * n_chan], d_bf_sti, n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
 
 	return data_out;
 }
