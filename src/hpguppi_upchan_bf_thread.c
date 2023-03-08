@@ -28,7 +28,7 @@
 #include "hdf5.h"
 #include "ioprio.h"
 
-//#include "hpguppi_time.h"
+// #include "hpguppi_time.h"
 #include "upchannelizer_beamformer.h"
 
 #include "hashpipe.h"
@@ -42,7 +42,7 @@
 
 #include "hpguppi_databuf.h"
 #include "hpguppi_params.h"
-//#include "hpguppi_pksuwl.h"
+// #include "hpguppi_pksuwl.h"
 #include "hpguppi_util.h"
 
 // 80 character string for the BACKEND header record.
@@ -194,6 +194,8 @@ static void *run(hashpipe_thread_args_t *args)
   double pktidx_time = 0;
   double block_midtime = 0;
   double time_array_midpoint = 0;
+  double time_array_cur_diff = 0;
+  double time_array_min_diff = 0;
 
   hid_t file_id, npol_id, nbeams_id, obs_id, src_id, cal_all_id, delays_id, time_array_id, ra_id, dec_id, sid1, sid2, sid4, sid5, sid6, src_dspace_id, obs_type, native_src_type; // native_obs_type; // identifiers //
   herr_t status, cal_all_elements, delays_elements, time_array_elements, ra_elements, dec_elements, src_elements;
@@ -213,7 +215,7 @@ static void *run(hashpipe_thread_args_t *args)
   uint64_t npol;
   hvl_t *src_names_str;
   char *p_end;
-  //int hdf5_obsidsize;
+  // int hdf5_obsidsize;
   hvl_t *hdf5_obsid;
 
   int time_array_idx = 0; // time_array index
@@ -305,7 +307,7 @@ static void *run(hashpipe_thread_args_t *args)
 
     // Get pointer to current block's header
     p_header = hpguppi_databuf_header(db, curblock);
-    
+
     // Get subband index
     hgeti4(p_header, "SUBBAND", &subband_idx); // Get current index of subband being processed
     // Number of time samples in a RAW file
@@ -339,7 +341,7 @@ static void *run(hashpipe_thread_args_t *args)
         block_count = 0;
         printf("Block count = %d, and memory including GPU memory has been freed. \n", block_count);
       }
-      for (int b = 0; b < (nbeams+1); b++)
+      for (int b = 0; b < (nbeams + 1); b++)
       {
         // If file open, close it
         if (fdraw[b] != -1)
@@ -504,8 +506,16 @@ static void *run(hashpipe_thread_args_t *args)
         n_fft = 524288; // 2^19 point FFT
       }
       else if (n_coarse_proc == 4)
-      {                 // 4k mode
-        n_fft = 131072; // 2^17 point FFT
+      { // 4k mode
+        if (telescope_flag == 0)
+        {
+          n_fft = 131072; // 2^17 point FFT
+        }
+        else if (telescope_flag == 1)
+        {
+          n_fft = 258048; // 2064384; // 256000; // 262144;
+          n_win_spec = (int)ceil((double)n_samp / n_fft);
+        }
       }
       else if (n_coarse_proc == 32)
       {                // 32k mode
@@ -513,7 +523,7 @@ static void *run(hashpipe_thread_args_t *args)
       }
 
       // Calculate center frequncy of first coarse frequency channel
-      fch1 = (obsfreq - (((double)(n_chan_per_node - 1) / (2*n_chan_per_node)) * obsbw) - (floor(n_fft / 2) * (obsbw/(n_fft * n_chan_per_node))));
+      fch1 = (obsfreq - (((double)(n_chan_per_node - 1) / (2 * n_chan_per_node)) * obsbw) - (floor(n_fft / 2) * (obsbw / (n_fft * n_chan_per_node))));
 
       n_samp_spec = n_fft * n_win_spec;
 
@@ -523,20 +533,30 @@ static void *run(hashpipe_thread_args_t *args)
       // If the number of time samples is greater by 2, then the number of antennas is smaller by half (subarray configuration)
       // So there is a situation where one of the RAW files may have less time samples than 2 times the
       // specified value here in the subarray configuration. Try to compensate for that with the else if()
-      if (n_samp < n_samp_spec)
+      if (telescope_flag == 0)
       {
-        n_samp = n_samp_spec;
+        if (n_samp < n_samp_spec)
+        {
+          n_samp = n_samp_spec;
+        }
+        else if ((n_ant_config == (N_ANT / 2)) && (n_samp > (3 * n_samp_spec / 2)) && (n_samp < 2 * n_samp_spec))
+        {
+          n_samp = 2 * n_samp_spec;
+        }
       }
-      else if ((n_ant_config == (N_ANT/2)) && (n_samp > (3 * n_samp_spec / 2)) && (n_samp < 2 * n_samp_spec))
+      else if (telescope_flag == 1)
       {
-        n_samp = 2 * n_samp_spec;
+        if (n_samp < n_samp_spec)
+        {
+          n_samp = n_samp_spec;
+        }
       }
 
       // Number of time samples used for FFT (Number of FFT points)
       n_time_int = 1; // n_samp / n_fft;
 
       // Number of spectra windows
-      n_win =  n_samp / n_fft; // n_time_int;
+      n_win = n_samp / n_fft; // n_time_int;
 
       // Number of STI windows
       n_sti = n_win / n_time_int;
@@ -602,21 +622,21 @@ static void *run(hashpipe_thread_args_t *args)
 
         // Reading a fixed length obsid string (MeerKAT RAW file uses fixed length string) //
         // Get obsid data type //
-        //obs_type = H5Dget_type(obs_id);
-        //native_obs_type = H5Tget_native_type(obs_type, H5T_DIR_DEFAULT);
-        //hdf5_obsidsize = (int)H5Tget_size(native_obs_type);
+        // obs_type = H5Dget_type(obs_id);
+        // native_obs_type = H5Tget_native_type(obs_type, H5T_DIR_DEFAULT);
+        // hdf5_obsidsize = (int)H5Tget_size(native_obs_type);
 
         // Allocate memory to string array
-        //char hdf5_obsid[hdf5_obsidsize + 1];
-        //hdf5_obsid[hdf5_obsidsize] = '\0'; // Terminate string
+        // char hdf5_obsid[hdf5_obsidsize + 1];
+        // hdf5_obsid[hdf5_obsidsize] = '\0'; // Terminate string
 
         // Read the dataset. //
-        //status = H5Dread(obs_id, native_obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
+        // status = H5Dread(obs_id, native_obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
 
         // Reading a variable length obsid string (COSMIC RAW file seems to use variable length string)//
         obs_type = H5Tvlen_create(H5T_NATIVE_CHAR);
-        hdf5_obsid =  malloc((int)1 * sizeof(hvl_t));
-        
+        hdf5_obsid = malloc((int)1 * sizeof(hvl_t));
+
         // Read the dataset. //
         status = H5Dread(obs_id, obs_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, hdf5_obsid);
 
@@ -741,10 +761,13 @@ static void *run(hashpipe_thread_args_t *args)
 
         // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
         tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams, (int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
-        
-        if(telescope_flag == 0){
+
+        if (telescope_flag == 0)
+        {
           memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
-        }else if(telescope_flag == 1){
+        }
+        else if (telescope_flag == 1)
+        {
           memcpy(bf_coefficients, tmp_coefficients, VLASS_N_COEFF * sizeof(float));
         }
 
@@ -914,13 +937,23 @@ static void *run(hashpipe_thread_args_t *args)
     // If the number of time samples is greater by 2, then the number of antennas is smaller by half (subarray configuration)
     // So there is a situation where one of the RAW files may have less time samples than 2 times the
     // specified value here in the subarray configuration. Try to compensate for that with the else if()
-    if (n_samp < n_samp_spec)
+    if (telescope_flag == 0)
     {
-      n_samp = n_samp_spec;
+      if (n_samp < n_samp_spec)
+      {
+        n_samp = n_samp_spec;
+      }
+      else if ((n_ant_config == (N_ANT / 2)) && (n_samp > (3 * n_samp_spec / 2)) && (n_samp < 2 * n_samp_spec))
+      {
+        n_samp = 2 * n_samp_spec;
+      }
     }
-    else if (n_samp > (3 * n_samp_spec / 2) && n_samp < 2 * n_samp_spec)
+    else if (telescope_flag == 1)
     {
-      n_samp = 2 * n_samp_spec;
+      if (n_samp < n_samp_spec)
+      {
+        n_samp = n_samp_spec;
+      }
     }
 
     printf("UBF: n_samp = %d\n", n_samp);
@@ -957,52 +990,99 @@ static void *run(hashpipe_thread_args_t *args)
 
         fwrite(bf_coefficients, sizeof(float), N_COEFF, coeffptr);
 
-        if(telescope_flag == 0){
+        if (telescope_flag == 0)
+        {
           fwrite(bf_coefficients, sizeof(float), N_COEFF, coeffptr);
         }
-        else if(telescope_flag == 1){
+        else if (telescope_flag == 1)
+        {
           fwrite(bf_coefficients, sizeof(float), VLASS_N_COEFF, coeffptr);
         }
 
         fclose(coeffptr);
       }
 
+      printf("UBF: Here 1 \n");
+
       // Number of time samples in a RAW block used to calculate pktidx_time which is the approximate unix time at a given PKTIDX
       n_samp_per_rawblk = (int)(raw_blocsize / (2 * obsnchan * npol));
 
-      // Compute unix time in the middle of the block and avg. value current and next time_array value for comparison
-      // Update coefficient if unix time is in the middle of the shared memory buffer block (not the RAW block so use 'n_samp'
-      // rather than 'n_samp_per_rawblk') is greater than avg. of the two time array values
-      pktidx_time = synctime + (pktidx * tbin * n_samp_per_rawblk / piperblk);
-      block_midtime = pktidx_time + tbin * n_samp / 2;
-      if (time_array_idx < (time_array_elements - 1))
+      if (telescope_flag == 0)
       {
-        time_array_midpoint = (time_array_data[time_array_idx] + time_array_data[time_array_idx + 1]) / 2;
-      }
-      else if (time_array_idx >= (time_array_elements - 1))
-      {
-        time_array_midpoint = time_array_data[time_array_idx];
-        time_array_idx = time_array_elements - 2;
-      }
+        // Compute unix time in the middle of the block and avg. value current and next time_array value for comparison
+        // Update coefficient if unix time is in the middle of the shared memory buffer block (not the RAW block so use 'n_samp'
+        // rather than 'n_samp_per_rawblk') is greater than avg. of the two time array values
+        pktidx_time = synctime + (pktidx * tbin * n_samp_per_rawblk / piperblk);
+        block_midtime = pktidx_time + tbin * n_samp / 2;
+        if (time_array_idx < (time_array_elements - 1))
+        {
+          time_array_midpoint = (time_array_data[time_array_idx] + time_array_data[time_array_idx + 1]) / 2;
+        }
+        else if (time_array_idx >= (time_array_elements - 1))
+        {
+          time_array_midpoint = time_array_data[time_array_idx];
+          time_array_idx = time_array_elements - 2;
+        }
 
-      // Update coefficients every specified number of blocks
-      if (block_midtime >= time_array_midpoint)
+        // Update coefficients every specified number of blocks
+        if (block_midtime >= time_array_midpoint)
+        {
+          // Then update with delays[n+1]
+          time_array_idx += 1;
+
+          // Update coefficients with new delay
+          // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
+          tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams, (int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
+
+          memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
+
+          // Write coefficients to binary file for analysis with CASA
+          if ((time_array_idx == 15) && (coeff_flag == 0))
+          {
+            coeff_flag = 1; // Only necessary to do once in scan
+
+            sprintf(coeff_fname, "%s.coeff.middle.bin", coeff_basefilename);
+
+            coeffptr = fopen(coeff_fname, "wb");
+
+            fwrite(bf_coefficients, sizeof(float), N_COEFF, coeffptr);
+
+            fclose(coeffptr);
+          }
+        }
+      }
+      else if (telescope_flag == 1)
       {
-        // Then update with delays[n+1]
-        time_array_idx += 1;
+        // Compute unix time in the middle of the block and avg. value current and next time_array value for comparison
+        // Update coefficient if unix time is in the middle of the shared memory buffer block (not the RAW block so use 'n_samp'
+        // rather than 'n_samp_per_rawblk') is greater than avg. of the two time array values
+        pktidx_time = synctime + (pktidx * tbin * n_samp_per_rawblk / piperblk);
+        block_midtime = pktidx_time - tbin * n_samp / 2;
+
+        time_array_min_diff = fabs(block_midtime - time_array_data[0]);
+
+        for (int i = 0; i < time_array_elements; i++)
+        {
+          time_array_cur_diff = fabs(block_midtime - time_array_data[i]);
+          if (time_array_cur_diff < time_array_min_diff)
+          {
+            time_array_min_diff = time_array_cur_diff;
+            time_array_idx = i;
+          }
+        }
+
+        printf("UBF: Here 3 time_array_idx = %d \n", time_array_idx);
+        printf("UBF: time_array[%d] = %lf, time_array[%d] = %lf, time_array[%d] = %lf \n", 0, time_array_data[0], 76, time_array_data[76], 151, time_array_data[151]);
+        printf("UBF: pktidx_time = %lf, block_midtime = %lf \n", pktidx_time, block_midtime);
 
         // Update coefficients with new delay
         // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
         tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams, (int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
 
-        if(telescope_flag == 0){
-          memcpy(bf_coefficients, tmp_coefficients, N_COEFF * sizeof(float));
-        }else if(telescope_flag == 1){
-          memcpy(bf_coefficients, tmp_coefficients, VLASS_N_COEFF * sizeof(float));
-        }
+        memcpy(bf_coefficients, tmp_coefficients, VLASS_N_COEFF * sizeof(float));
 
         // Write coefficients to binary file for analysis with CASA
-        if ((time_array_idx == 15) && (coeff_flag == 0))
+        if ((time_array_idx == 76) && (coeff_flag == 0))
         {
           coeff_flag = 1; // Only necessary to do once in scan
 
@@ -1014,7 +1094,57 @@ static void *run(hashpipe_thread_args_t *args)
 
           fclose(coeffptr);
         }
+        
+
+        /*
+        // Compute unix time in the middle of the block and avg. value current and next time_array value for comparison
+        // Update coefficient if unix time is in the middle of the shared memory buffer block (not the RAW block so use 'n_samp'
+        // rather than 'n_samp_per_rawblk') is greater than avg. of the two time array values
+        pktidx_time = synctime + (pktidx * tbin * n_samp_per_rawblk / piperblk);
+        block_midtime = pktidx_time + tbin * n_samp / 2;
+        if (time_array_idx < (time_array_elements - 1))
+        {
+          time_array_midpoint = (time_array_data[time_array_idx] + time_array_data[time_array_idx + 1]) / 2;
+        }
+        else if (time_array_idx >= (time_array_elements - 1))
+        {
+          time_array_midpoint = time_array_data[time_array_idx];
+          time_array_idx = time_array_elements - 2;
+        }
+        printf("UBF: Here 2 \n");
+
+        // Update coefficients every specified number of blocks
+        if (block_midtime >= time_array_midpoint)
+        {
+          // Then update with delays[n+1]
+          time_array_idx += 1;
+
+          printf("UBF: Here 3 time_array_idx = %d \n", time_array_idx);
+          // Update coefficients with new delay
+          // Assign values to tmp variable then copy values from it to pinned memory pointer (bf_coefficients)
+          tmp_coefficients = generate_coefficients_ubf(cal_all_data, delays_data, time_array_idx, coarse_chan_freq, n_ant_config, (int)npol, (int)nbeams, actual_nbeams, (int)schan, n_coarse_proc, subband_idx, nants, telescope_flag);
+
+          memcpy(bf_coefficients, tmp_coefficients, VLASS_N_COEFF * sizeof(float));
+
+          printf("UBF: Here 4 \n");
+
+          // Write coefficients to binary file for analysis with CASA
+          if ((time_array_idx == 76) && (coeff_flag == 0))
+          {
+            coeff_flag = 1; // Only necessary to do once in scan
+
+            sprintf(coeff_fname, "%s.coeff.middle.bin", coeff_basefilename);
+
+            coeffptr = fopen(coeff_fname, "wb");
+
+            fwrite(bf_coefficients, sizeof(float), N_COEFF, coeffptr);
+
+            fclose(coeffptr);
+          }
+        }
+        */
       }
+      printf("UBF: Here 5 \n");
     }
 
     /* Set up data pointer for quant routines */
@@ -1028,6 +1158,8 @@ static void *run(hashpipe_thread_args_t *args)
     // Start timing beamforming computation
     struct timespec tval_before, tval_after;
     clock_gettime(CLOCK_MONOTONIC, &tval_before);
+
+    printf("UBF: Here 6 \n");
 
     if (sim_flag == 0)
     {

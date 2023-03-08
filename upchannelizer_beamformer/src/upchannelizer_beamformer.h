@@ -38,9 +38,9 @@
 
 
 // VLASS specs
-#define VLASS_N_TIME (2097152) // (10240000) // (5120000) // 1024000 with desired specs (~10 seconds) and 5120000 with required specs (~5 seconds)
+#define VLASS_N_TIME (2064384) // (2304000) // (2097152) // (10240000) // (5120000) // 1024000 with desired specs (~10 seconds) and 5120000 with required specs (~5 seconds)
 #define VLASS_N_FREQ (4) // 1 of 32 coarse channels
-#define VLASS_N_FFT  (131072) // Lowest frequency resolution
+#define VLASS_N_FFT  (258048) // (2064384) // (256000) // (262144) // (131072) // Lowest frequency resolution
 #define VLASS_N_BEAM (32) // Max number of beams
 #define VLASS_N_WIN  (VLASS_N_TIME/VLASS_N_FFT) // Number of spectral windows
 

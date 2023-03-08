@@ -689,13 +689,22 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 	float *d_bf_sti = d_data_bf_sti;
 	float *data_out = h_bf_pow;
 
+	printf("UBF: Here 7 \n");
+
 	// Copy beamformer coefficients from host to device
 	checkCuda_ubf(cudaMemcpy(d_coefficient, h_coefficient, (2 * n_pol * n_ant_config * n_beam * n_chan) * sizeof(float), cudaMemcpyHostToDevice));
 
+
+	printf("UBF: Here 8 \n");
+	printf("UBF: n_ant_config = %d \n", n_ant_config);
+	printf("UBF: n_pol = %d \n", n_pol);
+	printf("UBF: nt = %d \n", nt);
+	printf("UBF: n_chan = %d \n", n_chan);
 	// printf("Before cudaMemcpy(HtoD) coefficients! \n");
 	//  Copy input data from host to device
 	checkCuda_ubf(cudaMemcpy(d_data_in, data_in, 2 * n_ant_config * n_pol * nt * n_chan * sizeof(signed char), cudaMemcpyHostToDevice));
 
+	printf("UBF: Here 9 \n");
 	// Perform transpose on the data and convert to floats
 	data_transpose_ubf<<<dimGrid_transpose, dimBlock_transpose>>>(d_data_in, d_data_tra, 0, n_pol, n_chan, n_ant, n_ant_config, n_samp, n_win);
 	err_code = cudaGetLastError();
@@ -704,9 +713,11 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		printf("FFT: data_transpose() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	printf("UBF: Here 10 \n");
 	// Upchannelize the data
 	upchannelize((complex_t *)d_data_tra, n_ant_config, n_pol, n_chan, n_win, n_samp);
 
+	printf("UBF: Here 11 \n");
 	// FFT shift and transpose
 	fft_shift<<<dimGrid_fftshift, dimBlock_fftshift>>>(d_data_tra, d_data_tra2, 0, n_ant_config, n_pol, n_chan, n_win, n_samp);
 	err_code = cudaGetLastError();
@@ -715,9 +726,11 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		printf("FFT: fft_shift() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	printf("UBF: Here 12 \n");
 	// Set input of FFT shift to zero so it can be used as the output of the coherent_beamformer
 	set_to_zero_ubf(telescope_flag);
 
+	printf("UBF: Here 13 \n");
 	// Coherent beamformer
 	coherent_beamformer_ubf<<<dimGrid_coh_bf, dimBlock_coh_bf>>>(d_data_tra2, d_coefficient, d_data_tra, 0, n_ant_config, n_pol, n_samp, n_chan, n_beam, n_win);
 	err_code = cudaGetLastError();
@@ -726,6 +739,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		printf("FFT: coherent_beamformer_ubf() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	printf("UBF: Here 14 \n");
 	// Incoherent beamformer
 	incoherent_beamformer_ubf<<<dimGrid_incoh_bf, dimBlock_incoh_bf>>>(d_data_tra2, d_incoh_bf, 0, n_ant_config, n_pol, n_samp, n_chan, (n_beam + 1), n_win);
 	err_code = cudaGetLastError();
@@ -734,6 +748,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		printf("FFT: incoherent_beamformer_ubf() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	printf("UBF: Here 15 \n");
 	// Set input of coherent_beamformer_ubf() to zero so it can be used as the output of the beamformer_power_sti_ubf() kernel
 	set_second_to_zero(telescope_flag);
 
@@ -745,6 +760,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		printf("FFT: beamformer_power_sti() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	printf("UBF: Here 16 \n");
 	// Short time integration after beamforming
 	beamformer_sti_ubf<<<dimGrid_bf_sti, dimBlock_bf_sti>>>(d_incoh_bf, d_bf_sti, 0, n_pol, (n_beam + 1), n_chan, n_samp, n_time_int, n_sti);
 	err_code = cudaGetLastError();
@@ -753,10 +769,12 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		printf("FFT: beamformer_power_sti() kernel Failed: %s\n", cudaGetErrorString(err_code));
 	}
 
+	printf("UBF: Here 17 \n");
 	// Copy input data from device to host
 	checkCuda_ubf(cudaMemcpy(data_out, (float *)d_data_tra2, actual_n_beam * n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
+	printf("UBF: Here 18 \n");
 	checkCuda_ubf(cudaMemcpy(&data_out[actual_n_beam * n_sti * n_samp * n_chan], d_bf_sti, n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
-
+	printf("UBF: Here 19 \n");
 	return data_out;
 }
 
