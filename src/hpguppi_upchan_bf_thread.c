@@ -1072,7 +1072,8 @@ static void *run(hashpipe_thread_args_t *args)
         }
 
         printf("UBF: Here 3 time_array_idx = %d \n", time_array_idx);
-        printf("UBF: time_array[%d] = %lf, time_array[%d] = %lf, time_array[%d] = %lf \n", 0, time_array_data[0], 76, time_array_data[76], 151, time_array_data[151]);
+        printf("UBF: time_array[%d] = %lf, time_array[%d] = %lf, time_array[%d] = %lf \n", 0, time_array_data[0], 76, time_array_data[76], 150, time_array_data[150]);
+        printf("UBF: time_array_idx = %d \n", time_array_idx);
         printf("UBF: pktidx_time = %lf, block_midtime = %lf \n", pktidx_time, block_midtime);
 
         // Update coefficients with new delay

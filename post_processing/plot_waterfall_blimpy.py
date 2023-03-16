@@ -5,9 +5,10 @@ import sys
 
 file_path = sys.argv[1]
 base_path = file_path.split('fil')[0]
-f_start = 3032.2496 # Starting frequency in MHz
-f_stop = 3032.2504 # Stopping frequency in MHz
-ics = Waterfall(file_path, f_start, f_stop)
+#f_start = 3032.2496 # Starting frequency in MHz
+#f_stop = 3032.2504 # Stopping frequency in MHz
+#ics = Waterfall(file_path, f_start, f_stop)
+ics = Waterfall(file_path)
 
 less_than_zero = np.where(ics.data == 0)
 print("Number of values equal to zero = ", str(np.size(less_than_zero)))
@@ -24,3 +25,7 @@ ax2 = plt.subplot2grid((2,1),(1,0))
 ics.plot_spectrum(logged=True)
 plt.show()
 #plt.savefig(base_path+'png')
+
+plt.figure()
+ics.plot_time_series(logged=True)
+plt.show()
