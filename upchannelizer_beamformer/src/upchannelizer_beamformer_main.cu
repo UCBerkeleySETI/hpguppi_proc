@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 	}// If the output file and another argument are entered
 	else if(argc == 3){
 		sim_data_flag = atoi(argv[2]);
-		if(sim_data_flag < 0 || sim_data_flag > 5){
+		if(sim_data_flag < 0 || sim_data_flag > 8){
 			printf("sim_data_flag is out of bounds i.e. this option doesn't exist. The flag has been set to 5, the default. \n");
 			sim_data_flag = 5;
 		}
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
 	else if(argc >= 4){
 		sim_data_flag = atoi(argv[2]);
 		sim_coef_flag = atoi(argv[3]);
-		if(sim_data_flag < 0 || sim_data_flag > 5){
+		if(sim_data_flag < 0 || sim_data_flag > 8){
 			printf("sim_data_flag is out of bounds i.e. this option doesn't exist. The flag has been set to 5, the default. \n");
 			sim_data_flag = 5;
 		}
@@ -161,6 +161,7 @@ int main(int argc, char **argv) {
 	// To run in subarray configuration, enter values 32 or less (and greater than 1 otherwise, beamforming can't be done)
 	// ---------------------------- //
 	int n_beam = 0;
+	int max_n_beams = 0;
 	int n_pol = 0;
 	int n_sim_ant = 0;
 	int n_ant_config = 0;
@@ -239,13 +240,14 @@ int main(int argc, char **argv) {
                 // Required Specification
 		if(spec_flag == 0){
 			printf("Required mode chosen. Specifications remain unchanged from default. \n");
-			n_beam = 5;
+			max_n_beams = VLASS_N_BEAM;
+			n_beam = 3;
 			n_pol = 2;
-			n_sim_ant = 27;
+			n_sim_ant = 22;
 			n_ant_config = N_ANT/2;
-			n_chan = 1;
-			nt = 5013504; // 5120000;
-			n_win = 32; //40
+			n_chan = 4;
+			nt = 2064384; //5013504; // 5120000;
+			n_win = 8; //2064384; //32; //40
 			n_time_int = 1;
 		}// Desired Specification
 		else if(spec_flag == 1){
@@ -296,14 +298,16 @@ int main(int argc, char **argv) {
 	printf("Allocated memory \n");
 
 	// Generate simulated data
-	signed char* sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag);
+	//int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift, int filenum, int num_files
+	signed char* sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag, 0, 0, 0, 0);
+	//signed char* sim_data = simulate_data_ubf(n_sim_ant, n_ant_config, n_pol, n_chan, n_samp, n_win, sim_data_flag, telescope_flag);
     printf("Simulated data \n");
 
 	// Register the array in pinned memory to speed HtoD mem copy
 	input_data_pin(sim_data, telescope_flag);
 
 	// Generate simulated weights or coefficients
-	float* sim_coefficients = simulate_coefficients_ubf(n_sim_ant, n_ant_config, n_pol, n_beam, n_chan, sim_coef_flag, telescope_flag);
+	float* sim_coefficients = simulate_coefficients_ubf(n_sim_ant, n_ant_config, n_pol, max_n_beams, n_chan, sim_coef_flag, telescope_flag);
 	printf("Simulated coefficients \n");
 
 	// Register the array in pinned memory to speed HtoD mem copy
@@ -336,11 +340,12 @@ int main(int argc, char **argv) {
 
 	float time_taken = 0;
 	float bf_time = 0;
-	int num_runs = 2;
+	int num_runs = 1;
 
 	// Start timing FFT computation //
 	struct timespec tval_before, tval_after;
 
+	int fft_flag = 1;
 	for(int ii = 0; ii < num_runs; ii++){
 		// Start timing beamformer computation //
 		clock_gettime(CLOCK_MONOTONIC, &tval_before);
@@ -349,7 +354,9 @@ int main(int argc, char **argv) {
         // Things to keep in mind about FFT output:
 		// - FFT shift possibly required after FFT if too much memory is allocated
 		// - Output may need to be divided number of FFT points
-        output_data = run_upchannelizer_beamformer(sim_data, sim_coefficients, n_pol, n_sim_ant, n_beam, n_chan, n_win, n_time_int, n_samp, telescope_flag);
+        output_data = run_upchannelizer_beamformer(sim_data, sim_coefficients, n_pol, n_sim_ant, max_n_beams, n_beam, n_chan, n_win, n_time_int, n_samp, telescope_flag, fft_flag);
+		//output_data = run_upchannelizer_beamformer(sim_data, sim_coefficients, n_pol, n_sim_ant, n_beam, n_chan, n_win, n_time_int, n_samp, telescope_flag);
+		//signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int actual_n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag, int fft_flag
 
 		// Stop timing FFT computation //
 		clock_gettime(CLOCK_MONOTONIC, &tval_after);

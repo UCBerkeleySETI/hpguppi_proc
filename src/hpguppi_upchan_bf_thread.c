@@ -237,6 +237,7 @@ static void *run(hashpipe_thread_args_t *args)
   double sb_obsbw = 0;       // Subband bandwidth
   int n_samp_per_rawblk = 0; // Number of time samples in a RAW block used to calculate pktidx_time which is the approximate unix time at a given PKTIDX
   int n_ant_config = 0;
+  int fft_flag = 1; // FFT flag set to 1 means perform FFT, but set to 0 means don't perform FFT
 
   int sim_flag = 0; // Flag to use simulated coefficients (set to 1) or calculated beamformer coefficients (set to 0)
   // Add if statement for generate_coefficients() function option which has 3 arguments - tau, coarse frequency channel, and epoch
@@ -513,8 +514,11 @@ static void *run(hashpipe_thread_args_t *args)
         }
         else if (telescope_flag == 1)
         {
-          n_fft = 258048; // 2064384; // 256000; // 262144;
+          n_fft = 258048; // 1; // 21504; //258048; // 2064384; // 256000; // 262144;
           n_win_spec = (int)ceil((double)n_samp / n_fft);
+          if(n_fft == 1){
+            fft_flag = 0;
+          }
         }
       }
       else if (n_coarse_proc == 32)
@@ -1164,11 +1168,11 @@ static void *run(hashpipe_thread_args_t *args)
 
     if (sim_flag == 0)
     {
-      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, bf_coefficients, (int)npol, (int)nants, (int)nbeams, (int)actual_nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag);
+      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, bf_coefficients, (int)npol, (int)nants, (int)nbeams, (int)actual_nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag, fft_flag);
     }
     else if (sim_flag == 1)
     {
-      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, tmp_coefficients, (int)npol, (int)nants, (int)nbeams, (int)actual_nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag);
+      output_data = run_upchannelizer_beamformer((signed char *)&db->block[curblock].data, tmp_coefficients, (int)npol, (int)nants, (int)nbeams, (int)actual_nbeams, (int)n_coarse_proc, n_win, n_time_int, n_fft, telescope_flag, fft_flag);
     }
 
     // Set beamformer output (CUDA kernel before conversion to power), that is summing, to zero before moving on to next block

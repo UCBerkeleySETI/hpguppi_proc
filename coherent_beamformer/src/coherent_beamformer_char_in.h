@@ -32,6 +32,18 @@
 #define N_BF_POW      (unsigned long int)(N_BEAM*N_FREQ*N_TIME)              // Size of beamformer output after abs()^2
 //#define N_BF_POW      (unsigned long int)(N_BEAM*N_FREQ*N_STI)               // Size of beamformer output after abs()^2 and short time integration
 
+// VLASS specs
+#define VLASS_N_TIME (10240000) // (5120000) // 1024000 with desired specs (~10 seconds) and 5120000 with required specs (~5 seconds)
+#define VLASS_N_FREQ (1) // 1 of 32 coarse channels
+#define VLASS_N_FFT  (128000) // Lowest frequency resolution
+#define VLASS_N_BEAM (32) // Max number of beams
+#define VLASS_N_WIN  (VLASS_N_TIME/VLASS_N_FFT) // Number of spectral windows
+
+#define VLASS_N_INPUT       (unsigned long int)(2*N_POL*VLASS_N_TIME*VLASS_N_FREQ*(N_ANT/2))              // Size of input. Currently, same size as output
+#define VLASS_N_COEFF       (unsigned long int)(2*N_POL*(N_ANT/2)*VLASS_N_BEAM*VLASS_N_FREQ)              // Size of beamformer coefficients
+#define VLASS_N_BF_POW      (unsigned long int)((VLASS_N_BEAM+1)*VLASS_N_FREQ*VLASS_N_FFT*VLASS_N_WIN)        // Size of beamformer output after abs()^2 and short time integration
+
+
 #ifndef min
 #define min(a,b) ((a < b) ? a : b)
 #endif

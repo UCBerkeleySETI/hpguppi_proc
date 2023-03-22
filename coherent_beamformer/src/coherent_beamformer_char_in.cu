@@ -651,28 +651,46 @@ float* generate_coefficients(double* phase_up_solution, double* rates, double* d
 */
 
 // Generate coefficients with delays and phase up solutions from HDF5 file
-float* generate_coefficients(complex_t* phase_up, double* delay, int n, double* coarse_chan, int n_pol, int n_beam, int schan, int n_chan, uint64_t n_real_ant) {
-	float* coefficients;
-	coefficients = (float*)calloc(N_COEFF, sizeof(float));
+float* generate_coefficients(complex_t *phase_up, double *delay, int n, double *coarse_chan, int n_ant_config, int n_pol, int n_beam, int actual_n_beam, int schan, int n_coarse, int subband_idx, uint64_t n_real_ant, int telescope_flag) {
+	int n_coeff = 0;
+	if (telescope_flag == 0)
+	{
+		n_coeff = N_COEFF;
+	}
+	else if (telescope_flag == 1)
+	{
+		n_coeff = VLASS_N_COEFF;
+	}
+
+	float *coefficients;
+	coefficients = (float *)calloc(n_coeff, sizeof(float));
 	double tau = 0;
-        int fc = 0; // First frequency channel in the RAW file and on this node
+	int fc = 0; // First frequency channel in the RAW file and on this node
 
-	for (int p = 0; p < n_pol; p++) {
-                // 'schan' is the absolute channel index of the first channel in the RAW file.
-                // The beamformer recipe files contain all of the channels in the band
-                // So 'schan' offsets to start processing with the correct section/range of frequency channels
-		for (int f = 0; f < n_chan; f++) {
-			for (int b = 0; b < n_beam; b++) {
-				for (int a = 0; a < N_ANT; a++) {
-					if(a < n_real_ant){
-						tau = delay[delay_idx(a, b, n, n_real_ant, n_beam)];
-                                                fc = f+schan; // First frequency channel in the RAW file and on this node
+	for (int p = 0; p < n_pol; p++)
+	{
+		// 'schan' is the absolute channel index of the first channel in the RAW file.
+		// The beamformer recipe files contain all of the channels in the band
+		// So 'schan' offsets to start processing with the correct section/range of frequency channels
+		// for (int f = subband_idx*n_coarse; f < ((subband_idx*n_coarse) + n_coarse); f++) {
+		for (int f = 0; f < n_coarse; f++)
+		{
+			for (int b = 0; b < n_beam; b++)
+			{
+				for (int a = 0; a < n_ant_config; a++)
+				{
+					if (a < n_real_ant)
+					{
+						tau = delay[delay_idx(a, b, n, n_real_ant, actual_n_beam)];
+						fc = (f + (subband_idx * n_coarse)) + schan; // First frequency channel in the RAW file and on this node
 
-						coefficients[2 * coeff_idx(a, p, b, f, n_pol, n_beam)] = (float)(phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].re*cos(2 * PI * coarse_chan[f] * tau) - phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].im*sin(2 * PI * coarse_chan[f] * tau));
-						coefficients[2 * coeff_idx(a, p, b, f, n_pol, n_beam) + 1] = (float)(phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].re*sin(2 * PI * coarse_chan[f] * tau) + phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].im*cos(2 * PI * coarse_chan[f] * tau));
-					}else{
-						coefficients[2 * coeff_idx(a, p, b, f, n_pol, n_beam)] = 0;
-						coefficients[2 * coeff_idx(a, p, b, f, n_pol, n_beam) + 1] = 0;
+						coefficients[2 * coeff_idx(a, p, b, f, n_ant_config, n_pol, n_beam)] = (float)(phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].re * cos(2 * PI * coarse_chan[f] * tau) - phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].im * sin(2 * PI * coarse_chan[f] * tau));
+						coefficients[2 * coeff_idx(a, p, b, f, n_ant_config, n_pol, n_beam) + 1] = (float)(phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].re * sin(2 * PI * coarse_chan[f] * tau) + phase_up[cal_all_idx(a, p, fc, n_real_ant, n_pol)].im * cos(2 * PI * coarse_chan[f] * tau));
+					}
+					else
+					{
+						coefficients[2 * coeff_idx(a, p, b, f, n_ant_config, n_pol, n_beam)] = 0;
+						coefficients[2 * coeff_idx(a, p, b, f, n_ant_config, n_pol, n_beam) + 1] = 0;
 					}
 				}
 			}

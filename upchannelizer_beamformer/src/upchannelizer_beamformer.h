@@ -4,6 +4,7 @@
 #include <math.h>
 
 #define MAX_THREADS (1024)                                              // Maximum number of threads in a block
+#define MAX_BLOCKS_VLASS (64512)                                        // Maximum number of blocks for VLASS. The actual max number is 65535
 #define N_POL (2) //2                                                   // Number of polarizations
 #define N_TIME (131072) // (1024) // 8192 //16384 //1 // 8              // Number of time samples
 #define N_STI_BLOC (64)                                                 // 64 to accomodate both MeerKAT and VLA specifications. It was 32 for MeerKAT specs.
@@ -68,6 +69,7 @@
 #define data_in_idx(p, t, w, a, c, Np, Nt, Nw, Na)           ((p) + (Np)*(t) + (Nt)*(Np)*(w) + (Nw)*(Nt)*(Np)*(a) + (Na)*(Nw)*(Nt)*(Np)*(c))
 //#define data_in_idx(p, c, a, t, w, Np, Nc, Na, Nt)           ((p) + (Np)*(c) + (Nc)*(Np)*(a) + (Na)*(Nc)*(Np)*(t) + (Nt)*(Na)*(Nc)*(Np)*(w))
 #define data_tr_idx(t, a, p, c, w, Nt, Na, Np, Nc)           ((t) + (Nt)*(a) + (Na)*(Nt)*(p) + (Np)*(Na)*(Nt)*(c) + (Nc)*(Np)*(Na)*(Nt)*(w))
+#define data_tr_idx_cbf(a, p, c, t, w, Na, Np, Nc, Nt)       ((a) + (Na)*(p) + (Np)*(Na)*(c) + (Nc)*(Np)*(Na)*(t) + (Nt)*(Nc)*(Np)*(Na)*(w))
 #define data_fft_out_idx(f, a, p, c, w, Nf, Na, Np, Nc)      ((f) + (Nf)*(a) + (Na)*(Nf)*(p) + (Np)*(Na)*(Nf)*(c) + (Nc)*(Np)*(Na)*(Nf)*(w))
 // The "Nf" below is equal in value to "Nt*Nc" that is the dimension of "t" since this is the number of FFT points muliplied by the number of coarse channels
 #define data_fftshift_idx(a, p, f, c, w, Na, Np, Nf, Nc)     ((a) + (Na)*(p) + (Np)*(Na)*(f) + (Nf)*(Np)*(Na)*(c) + (Nc)*(Nf)*(Np)*(Na)*(w))
@@ -77,7 +79,9 @@
 #define cal_all_idx(a, p, f, Na, Np)                         ((a) + (Na)*(p) + (Np)*(Na)*(f))
 #define delay_idx(a, b, t, Na, Nb)                           ((a) + (Na)*(b) + (Nb)*(Na)*(t))
 #define coh_bf_idx(p, b, f, c, w, Np, Nb, Nc, Nf)            ((p) + (Np)*(b) + (Nb)*(Np)*(f) + (Nf)*(Nb)*(Np)*(c) + (Nc)*(Nf)*(Nb)*(Np)*(w))
+#define coh_bf_idx_cbf(p, b, c, t, Np, Nb, Nc)               ((p) + (Np)*(b) + (Nb)*(Np)*(c) + (Nc)*(Nb)*(Np)*(t))
 #define pow_bf_idx(f, c, s, b, Nf, Nc, Ns)                   ((f) + (Nf)*(c) + (Nc)*(Nf)*(s) + (Ns)*(Nc)*(Nf)*(b)) // Changed to efficiently write each beam to a filterbank file
+#define pow_bf_idx_cbf(c, t, b, Nc, Nt)                      ((c) + (Nc)*(t) + (Nt)*(Nc)*(b)) // Changed to efficiently write each beam to a filterbank file
 
 typedef struct complex_t{
 	float re;
@@ -89,7 +93,7 @@ extern "C" {
 #endif
 void init_upchan_beamformer(int telescope_flag); // Allocate memory to all arrays 
 void set_to_zero_ubf(int telescope_flag); // Set arrays to zero after a block is processed
-signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag);
+signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift, int filenum, int num_files);
 float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam, int n_chan, int sim_flag, int telescope_flag);
 float* generate_coefficients_ubf(complex_t* phase_up, double* delay, int n, double* coarse_chan, int n_ant_config, int n_pol, int n_beam, int actual_n_beam, int schan, int n_coarse, int subband_idx, uint64_t n_real_ant, int telescope_flag);
 void input_data_pin(signed char * data_in_pin, int telescope_flag);
@@ -98,7 +102,7 @@ void coeff_pin(float * data_coeff_pin, int telescope_flag);
 void unregister_data(void * data_unregister);
 void Cleanup_beamformer();
 void upchannelize(complex_t* data_tra, int n_ant_config, int n_pol, int n_chan, int n_samp); // Upchannelization
-float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int actual_n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag); // Run upchannelizer and beamformer
+float* run_upchannelizer_beamformer(signed char* data_in, float* h_coefficient, int n_pol, int n_ant, int n_beam, int actual_n_beam, int n_chan, int n_win, int n_time_int, int n_samp, int telescope_flag, int fft_flag); // Run upchannelizer and beamformer
 #ifdef __cplusplus
 }
 #endif
