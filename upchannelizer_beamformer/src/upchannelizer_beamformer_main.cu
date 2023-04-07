@@ -170,6 +170,7 @@ int main(int argc, char **argv) {
     int n_win = 0;
 	int n_time_int = 0;
 	int n_input = 0;
+	int no_fft = 0; // If set to 1 there is no upchannelization performed. If set to 0, there is upchannelization and the number of remaining spectral windows needs to be specified
 
         // ---------------- MeerKAT specs --------------- //
 	if(telescope_flag == 0){
@@ -247,7 +248,11 @@ int main(int argc, char **argv) {
 			n_ant_config = N_ANT/2;
 			n_chan = 4;
 			nt = 2064384; //5013504; // 5120000;
-			n_win = 8; //2064384; //32; //40
+			if(no_fft == 1){ // No FFT
+				n_win = 2064384; 
+			}else{ // Perform FFT leaving spectral windows
+				n_win = 8; //32; //40 
+			}
 			n_time_int = 1;
 		}// Desired Specification
 		else if(spec_flag == 1){
@@ -307,7 +312,7 @@ int main(int argc, char **argv) {
 	input_data_pin(sim_data, telescope_flag);
 
 	// Generate simulated weights or coefficients
-	float* sim_coefficients = simulate_coefficients_ubf(n_sim_ant, n_ant_config, n_pol, max_n_beams, n_chan, sim_coef_flag, telescope_flag);
+	float* sim_coefficients = simulate_coefficients_ubf(n_sim_ant, n_ant_config, n_pol, max_n_beams, n_beam, n_chan, sim_coef_flag, telescope_flag);
 	printf("Simulated coefficients \n");
 
 	// Register the array in pinned memory to speed HtoD mem copy
@@ -345,7 +350,7 @@ int main(int argc, char **argv) {
 	// Start timing FFT computation //
 	struct timespec tval_before, tval_after;
 
-	int fft_flag = 1;
+	int fft_flag = 0;
 	for(int ii = 0; ii < num_runs; ii++){
 		// Start timing beamformer computation //
 		clock_gettime(CLOCK_MONOTONIC, &tval_before);

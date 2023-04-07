@@ -26,10 +26,10 @@ __global__ void data_transpose_ubf(signed char *data_in, cuComplex *data_tra, in
 __global__ void data_transpose_cbf(signed char *data_in, cuComplex *data_tra, int offset, int n_pol, int n_chan, int n_ant, int n_ant_config, int n_samp);
 
 // Coherent beamformer no pre-upchannelization
-__global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuComplex *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int n_beam, int n_win);
+__global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuComplex *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int actual_n_beams, int max_n_beams, int n_win);
 
 // Incoherent beamformer no pre-upchannelization
-__global__ void incoherent_beamformer_cbf(cuComplex *input_data, float *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int n_beam, int n_win);
+__global__ void incoherent_beamformer_cbf(cuComplex *input_data, float *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int n_win);
 
 // Incoherent beamformer power no pre-upchannelization
 __global__ void beamformer_pow_cbf(cuComplex *bf_volt, float *bf_power, int offset, int n_pol, int n_beam, int n_coarse, int n_samp, int n_time_int, int n_sti);
@@ -248,10 +248,10 @@ void data_transpose_ubf(signed char* data_in, cuComplex* data_tra, int offset, i
 __global__ void data_transpose_cbf(signed char *data_in, cuComplex *data_tra, int offset, int n_pol, int n_chan, int n_ant, int n_ant_config, int n_samp)
 {
 	int t = threadIdx.x; // Time sample index
-	//int w = blockIdx.x;	 // Time window index
-	int a = 0;			 // blockIdx.x;	 // Antenna index
-	int c = 0;			 // blockIdx.z;	 // Coarse channel index
-	int p = 0;			 // Polarization index
+	// int w = blockIdx.x;	 // Time window index
+	int a = 0; // blockIdx.x;	 // Antenna index
+	int c = 0; // blockIdx.z;	 // Coarse channel index
+	int p = 0; // Polarization index
 
 	int tb = 0;					   // Index for block of time samples to compensate max number of threads
 	int TS = n_samp / MAX_THREADS; // Number of blocks of time samples to process
@@ -282,7 +282,7 @@ __global__ void data_transpose_cbf(signed char *data_in, cuComplex *data_tra, in
 }
 
 // Perform coherent beamforming operation
-__global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuComplex *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int n_beam, int n_win)
+__global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuComplex *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int actual_n_beams, int max_n_beams, int n_win)
 {
 	int a = threadIdx.x; // Antenna index
 	int c = blockIdx.x;	 // Coarse channel index
@@ -303,12 +303,12 @@ __global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuC
 		{ // Polarization index
 			for (tb = 0; tb < TS; tb++)
 			{
-				for (b = 0; b < n_beam; b++)
+				for (b = 0; b < actual_n_beams; b++)
 				{
 
 					i = data_tr_idx_cbf(a, p, (c + offset), t + tb * MAX_BLOCKS_VLASS, 0, n_ant_config, n_pol, n_coarse, n_samp);
 					// data_fftshift_idx(a, p, (c + offset), f, s, n_ant_config, n_pol, n_fine, n_coarse);
-					w = coeff_idx(a, p, b, (c + offset), n_ant_config, n_pol, n_beam);
+					w = coeff_idx(a, p, b, (c + offset), n_ant_config, n_pol, max_n_beams);
 
 					if (a < n_ant_config)
 					{
@@ -334,7 +334,7 @@ __global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuC
 					}
 					if (a == 0)
 					{
-						int h1 = coh_bf_idx_cbf(p, b, (c + offset), t + tb * MAX_BLOCKS_VLASS, n_pol, n_beam, n_coarse);
+						int h1 = coh_bf_idx_cbf(p, b, (c + offset), t + tb * MAX_BLOCKS_VLASS, n_pol, max_n_beams, n_coarse);
 						// int h1 = coh_bf_idx(p, b, f, (c + offset), s, n_pol, n_beam, n_coarse, n_fine);
 						output_data[h1].x = reduced_mul[0].x;
 						output_data[h1].y = reduced_mul[0].y;
@@ -347,7 +347,7 @@ __global__ void coherent_beamformer_cbf(cuComplex *input_data, float *coeff, cuC
 }
 
 // Perform incoherent beamforming operation
-__global__ void incoherent_beamformer_cbf(cuComplex *input_data, float *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int n_beam, int n_win)
+__global__ void incoherent_beamformer_cbf(cuComplex *input_data, float *output_data, int offset, int n_ant_config, int n_pol, int n_samp, int n_coarse, int n_win)
 {
 	int a = threadIdx.x; // Antenna index
 	int c = blockIdx.x;	 // Coarse channel index
@@ -391,7 +391,7 @@ __global__ void incoherent_beamformer_cbf(cuComplex *input_data, float *output_d
 				}
 				if (a == 0)
 				{
-					int h1 = coh_bf_idx_cbf(p, 0, (c + offset), t + tb * MAX_BLOCKS_VLASS, n_pol, n_beam, n_coarse);
+					int h1 = coh_bf_idx_cbf(p, 0, (c + offset), t + tb * MAX_BLOCKS_VLASS, n_pol, 1, n_coarse);
 					// coh_bf_idx(p, 0, f, (c + offset), s, n_pol, 1, n_coarse, n_fine);
 					output_data[h1] = reduced_mul[0];
 				}
@@ -917,7 +917,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 	------------------------No upchannelization kernels---------------------------------
 	*/
 	dim3 dimBlock_transpose_cbf(MAX_THREADS, 1, 1);
-	dim3 dimGrid_transpose_cbf(n_win, 1, 1);
+	dim3 dimGrid_transpose_cbf(1, 1, 1);
 
 	// Coherent beamformer kernel: Specify grid and block dimensions
 	dim3 dimBlock_coh_bf_cbf(n_ant_config, 1, 1);
@@ -984,6 +984,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 	printf("UBF: n_pol = %d \n", n_pol);
 	printf("UBF: nt = %d \n", nt);
 	printf("UBF: n_chan = %d \n", n_chan);
+	printf("UBF: actual_n_beam = %d \n", actual_n_beam);
 	// printf("Before cudaMemcpy(HtoD) coefficients! \n");
 	//  Copy input data from host to device
 	checkCuda_ubf(cudaMemcpy(d_data_in, data_in, 2 * n_ant_config * n_pol * nt * n_chan * sizeof(signed char), cudaMemcpyHostToDevice));
@@ -1058,6 +1059,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		}
 
 		printf("UBF: Here 17 \n");
+		printf("actual_n_beam * n_sti * n_samp * n_chan * sizeof(float) = %d, actual_n_beam = %d, n_sti = %d, n_samp = %d, n_chan = %d, sizeof(float) = %d\n", actual_n_beam * n_sti * n_samp * n_chan * 4, actual_n_beam, n_sti, n_samp, n_chan, 4);
 		// Copy input data from device to host
 		checkCuda_ubf(cudaMemcpy(data_out, (float *)d_data_tra2, actual_n_beam * n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
 		printf("UBF: Here 18 \n");
@@ -1070,7 +1072,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 
 		printf("UBF: Here 9 \n");
 		// Perform transpose on the data and convert to floats
-		data_transpose_cbf<<<dimGrid_transpose_cbf, dimBlock_transpose_cbf>>>(d_data_in, d_data_tra2, 0, n_pol, n_chan, n_ant, n_ant_config, n_samp);
+		data_transpose_cbf<<<dimGrid_transpose_cbf, dimBlock_transpose_cbf>>>(d_data_in, d_data_tra2, 0, n_pol, n_chan, n_ant, n_ant_config, nt);
 		err_code = cudaGetLastError();
 		if (err_code != cudaSuccess)
 		{
@@ -1079,7 +1081,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 
 		printf("UBF: Here 13 \n");
 		// Coherent beamformer
-		coherent_beamformer_cbf<<<dimGrid_coh_bf_cbf, dimBlock_coh_bf_cbf>>>(d_data_tra2, d_coefficient, d_data_tra, 0, n_ant_config, n_pol, n_samp, n_chan, n_beam, n_win);
+		coherent_beamformer_cbf<<<dimGrid_coh_bf_cbf, dimBlock_coh_bf_cbf>>>(d_data_tra2, d_coefficient, d_data_tra, 0, n_ant_config, n_pol, nt, n_chan, actual_n_beam, n_beam, n_win);
 		err_code = cudaGetLastError();
 		if (err_code != cudaSuccess)
 		{
@@ -1088,7 +1090,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 
 		printf("UBF: Here 14 \n");
 		// Incoherent beamformer
-		incoherent_beamformer_cbf<<<dimGrid_incoh_bf_ibf, dimBlock_incoh_bf_ibf>>>(d_data_tra2, d_incoh_bf, 0, n_ant_config, n_pol, n_samp, n_chan, (n_beam + 1), n_win);
+		incoherent_beamformer_cbf<<<dimGrid_incoh_bf_ibf, dimBlock_incoh_bf_ibf>>>(d_data_tra2, d_incoh_bf, 0, n_ant_config, n_pol, nt, n_chan, n_win);
 		err_code = cudaGetLastError();
 		if (err_code != cudaSuccess)
 		{
@@ -1100,7 +1102,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		set_second_to_zero(telescope_flag);
 
 		// Short time integration after beamforming
-		beamformer_pow_cbf<<<dimGrid_bf_pow_cbf, dimBlock_bf_pow_cbf>>>(d_data_tra, (float *)d_data_tra2, 0, n_pol, n_beam, n_chan, n_samp, n_time_int, n_sti);
+		beamformer_pow_cbf<<<dimGrid_bf_pow_cbf, dimBlock_bf_pow_cbf>>>(d_data_tra, (float *)d_data_tra2, 0, n_pol, n_beam, n_chan, nt, n_time_int, n_sti);
 		err_code = cudaGetLastError();
 		if (err_code != cudaSuccess)
 		{
@@ -1109,7 +1111,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 
 		printf("UBF: Here 16 \n");
 		// Short time integration after beamforming
-		beamformer_pow_ibf<<<dimGrid_bf_pow_ibf, dimBlock_bf_pow_ibf>>>(d_incoh_bf, d_bf_sti, 0, n_pol, (n_beam + 1), n_chan, n_samp, n_time_int, n_sti);
+		beamformer_pow_ibf<<<dimGrid_bf_pow_ibf, dimBlock_bf_pow_ibf>>>(d_incoh_bf, d_bf_sti, 0, n_pol, (n_beam + 1), n_chan, nt, n_time_int, n_sti);
 		err_code = cudaGetLastError();
 		if (err_code != cudaSuccess)
 		{
@@ -1117,6 +1119,7 @@ float *run_upchannelizer_beamformer(signed char *data_in, float *h_coefficient, 
 		}
 
 		printf("UBF: Here 17 \n");
+		printf("actual_n_beam * n_sti * n_samp * n_chan * sizeof(float) = %d, actual_n_beam = %d, n_sti = %d, n_samp = %d, n_chan = %d, sizeof(float) = %d\n", actual_n_beam * n_sti * n_samp * n_chan * 4, actual_n_beam, n_sti, n_samp, n_chan, 4);
 		// Copy input data from device to host
 		checkCuda_ubf(cudaMemcpy(data_out, (float *)d_data_tra2, actual_n_beam * n_sti * n_samp * n_chan * sizeof(float), cudaMemcpyDeviceToHost));
 		printf("UBF: Here 18 \n");
@@ -1159,7 +1162,7 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 	sim flag = 5 -> Simulated complex exponential i.e. exp(j*2*pi*f0*t)
 	sim flag = 6 -> Simulated drifting signal or complex exponential i.e. exp(j*2*pi*f0*t)
 	sim_data = 7 -> Simulated drifting signal that simulates ETI given a particular observatory and mode over a all time samples/blocks in a GUPPI RAW file
-	sim flag = 3 -> Simulated radio source in center beam assuming ULA
+	sim flag = 8 -> Simulated radio source moving across array assuming ULA with no upchannelization
 	*/
 	// int sim_flag = 5;
 	if (sim_flag == 0)
@@ -1355,12 +1358,13 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 		printf("Sim flag 8\n");
 		float c = 3e8;					  // Speed of light
 		float c_freq = 1504.5830078125e6; // 1.25e9;	   // Center frequency (Hz)
-		// float lambda = c / c_freq;			   // Wavelength
-		float d = 1;		   // lambda / 2;			     // Distance between antennas
-		float chan_band = 1e6; // Coarse channel bandwidth in Hz
+		float lambda = c / c_freq;		  // Wavelength
+		float d = lambda / 2;			  // Distance between antennas
+		float chan_band = 1e6;			  // Coarse channel bandwidth in Hz
 		// float fine_chan_band = chan_band / nt; // Fine channel bandwidth in Hz
-		double theta = 0; // SOI direction/angle of arrival
-		double tau = 0;	  // Delay
+		double theta = 0;	 // SOI direction/angle of arrival
+		double tau = 0;		 // Delay
+		double tbin = 1e-17; // Time between time samples in seconds
 		double rf_freqs = 0;
 		double cb = 90; // Center beam in degrees
 
@@ -1378,21 +1382,12 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 		double noise_realy = 0;
 		double noise_imagy = 0;
 
-		double pulse_length = 50000e-6;					  // Length of a pulse in seconds
-		double tbin = 1e-6;								  // Number of seconds between time samples
-		double pulse_tsamps = floor(pulse_length / tbin); // Approximate number of time samples corresponing to a pulse
-		int zero_tsamps = 0;							  // Number of time samples that are zeros
-		zero_tsamps = (int)floor(nt - pulse_tsamps);	  // Number of time samples that are zeros
-		int half_zero_tsamps = zero_tsamps / 2;
-		int pulse = 0; // Amplitude of the pulse
-		printf("pulse_tsamps = %lf\n", pulse_tsamps);
-		printf("zero_tsamps = %d\n", zero_tsamps);
-		printf("half_zero_tsamps = %d\n", half_zero_tsamps);
+		int pulse = 1; // Amplitude of the pulse
 
 		// Use current time as  seed for random generator
 		srand(time(0));
 		int raw_files = 0; // If set to 1, then there are RAW files being generated so theta might need to spread over RAW files. If set to 0, there are no RAW files being generated
-		float noise_amp = 0.0;
+		float noise_amp = 0.000001;
 		for (int w = 0; w < n_win; w++)
 		{
 			for (int t = 0; t < nt; t++)
@@ -1445,26 +1440,8 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 
 		for (int w = 0; w < n_win; w++)
 		{
-			if (nt == 1)
-			{
-				pulse = 30;
-				if(w == 0 || w == n_win-1){
-					printf("pulse = %d and nt = %d\n", pulse, nt);
-				}
-			}
 			for (int t = 0; t < nt; t++)
 			{
-				if (nt > 1)
-				{
-					if ((t >= half_zero_tsamps) && (t <= nt - half_zero_tsamps))
-					{
-						pulse = 30;
-					}
-					else
-					{
-						pulse = 0;
-					}
-				}
 				// Reduce the range of angles in order to prevent wrap around - That's what the 100 and 200 are for.
 				// theta = ((t / 50 - (nt / 100)) + cb) * PI / 180; // SOI direction/angle of arrival -> Moving across array over time i.e. angle changes each time sample
 				// theta = (4 * ((w + filenum * n_win) - ((n_win * num_files) / 2)) + cb) * PI / 180; // SOI direction/angle of arrival -> Moving across array over time i.e. angle changes each time sample
@@ -1483,14 +1460,15 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 				// theta = cb * PI / 180; // SOI direction/angle of arrival
 				// deg_per_tsamp = 1/50000; // Degrees per time sample
 				// theta = (deg_per_tsamp*((t + w*nt) - ((nt*n_win) / 2)) + cb) * PI / 180; // SOI direction/angle of arrival -> Moving across array over time i.e. angle changes each time sample
-				tau = (d * cos(theta) / c) * 1e9; // Delay in nanoseconds (the beamformer recipe file expects nanoseconds)
+
 				for (int f = 0; f < n_chan; f++)
 				{
 					// rf_freqs = chan_band * f + c_freq;
-					rf_freqs = ((chan_band * (f - (n_chan / 2))) + (chan_band / 2) + c_freq) * 1e-9; //
+					rf_freqs = ((chan_band * (f - (n_chan / 2))) + (chan_band / 2) + c_freq); //
 					// rf_freqs = ((fine_chan_band * (t + (nt*f) - (nt*n_chan / 2))) + (fine_chan_band / 2) + c_freq)*1e-9;
 					for (int a = 0; a < nants; a++)
 					{
+						tau = (a * d * cos(theta) / c); // Delay in nanoseconds (the beamformer recipe file expects nanoseconds)
 						if (n_pol == 1)
 						{
 							if (a < n_sim_ant)
@@ -1498,9 +1476,18 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 								noise_realx = noise_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)];
 								noise_imagx = noise_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1];
 								// Requantize from doubles/floats to signed chars with a range from -128 to 127
-								// X polarization
-								data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * a * tau) + noise_realx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
-								data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * a * tau) + noise_imagx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+								if (nt > 1)
+								{
+									// X polarization
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * tau) + noise_realx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * tau) + noise_imagx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+								}
+								else if (nt == 1)
+								{
+									// X polarization
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * tau) + noise_realx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * tau) + noise_imagx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+								}
 							}
 							else
 							{
@@ -1520,12 +1507,24 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 								noise_imagy = noise_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1];
 
 								// Requantize from doubles/floats to signed chars with a range from -128 to 127
-								// X polarization
-								data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * a * tau) + noise_realx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
-								data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * a * tau) + noise_imagx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
-								// Y polarization
-								data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * a * tau) + noise_realy) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
-								data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * a * tau) + noise_imagy) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256); // Make this negative if a different polarization is tested
+								if (nt > 1)
+								{
+									// X polarization
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * tau) + noise_realx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * tau) + noise_imagx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									// Y polarization
+									data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * tau) + noise_realy) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * tau) + noise_imagy) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256); // Make this negative if a different polarization is tested
+								}
+								else if (nt == 1)
+								{
+									// X polarization
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * tau) + noise_realx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * tau) + noise_imagx) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									// Y polarization
+									data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)] = (signed char)(((((pulse * cos(2 * PI * rf_freqs * tau) + noise_realy) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256);
+									data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1] = (signed char)(((((pulse * sin(2 * PI * rf_freqs * tau) + noise_imagy) - tmp_min) / (tmp_max - tmp_min)) - 0.5) * 256); // Make this negative if a different polarization is tested
+								}
 
 								if ((f == (n_chan - 1)) && (w == 0 || w == (n_win / 2) || w == (n_win - 1)))
 								{
@@ -1536,14 +1535,15 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 											printf("\n");
 											printf("SIM_DATA: file idx = %d \n", filenum);
 											printf("SIM_DATA: a = %d, t = %d, w = %d and f = %d\n", a, t, w, f);
-											printf("SIM_DATA: rf_freqs[%d] = %lf GHz \n", f, rf_freqs);
+											printf("SIM_DATA: rf_freqs[%d] = %lf GHz \n", f, rf_freqs * 1e-9);
 											printf("SIM_DATA: theta = %lf \n", (theta * 180 / PI));
-											printf("SIM_DATA: tau = %e ns \n", a * tau);
+											printf("SIM_DATA: tau = %e ns \n", tau * 1e9);
+											printf("SIM_DATA: t-tau = %e ns \n", ((t * tbin) - tau) * 1e9);
 											printf("\n");
 											printf("SIM_DATA: data_sim_r[x] = %d \n", (int)data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)]);
-											printf("SIM_DATA: data_sim_r[x] = %d \n", (int)data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants)+1]);
+											printf("SIM_DATA: data_sim_r[x] = %d \n", (int)data_sim[2 * data_in_idx(0, t, w, a, f, n_pol, nt, n_win, nants) + 1]);
 											printf("SIM_DATA: data_sim_r[y] = %d \n", (int)data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)]);
-											printf("SIM_DATA: data_sim_r[y] = %d \n", (int)data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants)+1]);
+											printf("SIM_DATA: data_sim_r[y] = %d \n", (int)data_sim[2 * data_in_idx(1, t, w, a, f, n_pol, nt, n_win, nants) + 1]);
 											printf("\n");
 										}
 									}
@@ -1568,7 +1568,7 @@ signed char *simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, 
 }
 
 // Generate simulated weights or coefficients
-float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam, int n_chan, int sim_flag, int telescope_flag)
+float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int max_n_beams, int actual_n_beams, int n_chan, int sim_flag, int telescope_flag)
 {
 	int n_coeff = 0;
 	int n_ant_config = 0;
@@ -1595,7 +1595,7 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 	*/
 	if (sim_flag == 0)
 	{
-		for (int i = 0; i < (n_pol * n_ant_config * n_beam * n_chan); i++)
+		for (int i = 0; i < (n_pol * n_ant_config * max_n_beams * n_chan); i++)
 		{
 			coeff_sim[2 * i] = 1;
 			// coeff_sim[2*i + 1] = 1;
@@ -1611,14 +1611,14 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 			{
 				for (int a = 0; a < nants; a++)
 				{
-					for (int b = 0; b < n_beam; b++)
+					for (int b = 0; b < actual_n_beams; b++)
 					{
-						if (tmp >= n_beam)
+						if (tmp >= actual_n_beams)
 						{
 							tmp = 0;
 						}
-						coeff_sim[2 * coeff_idx(a, p, b, f, nants, n_pol, n_beam)] = tmp * 0.01;
-						tmp = (tmp + 1) % (n_beam + 1);
+						coeff_sim[2 * coeff_idx(a, p, b, f, nants, n_pol, max_n_beams)] = tmp * 0.01;
+						tmp = (tmp + 1) % (actual_n_beams + 1);
 					}
 				}
 			}
@@ -1633,14 +1633,14 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 			{
 				for (int a = 0; a < nants; a++)
 				{
-					for (int b = 0; b < n_beam; b++)
+					for (int b = 0; b < actual_n_beams; b++)
 					{
-						if (tmp >= n_beam)
+						if (tmp >= actual_n_beams)
 						{
 							tmp = 0;
 						}
-						tmp = (tmp + 1) % (n_beam + 1);
-						coeff_sim[2 * coeff_idx(a, p, b, f, nants, n_pol, n_beam)] = tmp;
+						tmp = (tmp + 1) % (actual_n_beams + 1);
+						coeff_sim[2 * coeff_idx(a, p, b, f, nants, n_pol, max_n_beams)] = tmp;
 					}
 				}
 			}
@@ -1650,8 +1650,8 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 	{
 		float c = 3e8;					  // Speed of light
 		float c_freq = 1504.5830078125e6; // Center frequency
-		// float lambda = c / c_freq;		  // Wavelength
-		float d = 1; // lambda / 2;	   // Distance between antennas
+		float lambda = c / c_freq;		  // Wavelength
+		float d = lambda / 2;			  // Distance between antennas
 
 		float chan_band = 1e6; // Fine channel bandwidth in Hz
 		double rf_freqs = 0;
@@ -1669,33 +1669,33 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 			rf_freqs = (chan_band * f + c_freq) * 1e-9;
 			for (int a = 0; a < nants; a++)
 			{
-				for (b = 0; b < n_beam; b++)
+				for (b = 0; b < actual_n_beams; b++)
 				{
 					if (telescope_flag == 0)
 					{
-						theta = ((b - ((float)n_beam / 2)) + 90) * PI / 180; // Beam angle from 58 to 122 degrees - Given SOI at 90 deg or moving across array, the beam with the most power is beamm 33
+						theta = ((b - ((float)actual_n_beams / 2)) + 90) * PI / 180; // Beam angle from 58 to 122 degrees - Given SOI at 90 deg or moving across array, the beam with the most power is beamm 33
 					}
 					else if (telescope_flag == 1)
 					{
 						degree_offset = 45;
-						theta = ((((float)b + 0.5) - ((float)n_beam / 2)) * degree_offset + cen_beam) * PI / 180; // Beam angle from 58 to 122 degrees - Given SOI at 90 deg or moving across array, the beam with the most power is beamm 33
+						theta = ((((float)b + 0.5) - ((float)actual_n_beams / 2)) * degree_offset + cen_beam) * PI / 180; // Beam angle from 58 to 122 degrees - Given SOI at 90 deg or moving across array, the beam with the most power is beamm 33
 					}
 
 					tau_beam = (a * d * cos(theta) / c) * 1e9; // Delay
 					if (n_pol == 1)
 					{
 						// X polarization
-						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, n_beam)] = cos(2 * PI * rf_freqs * tau_beam);
-						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, n_beam) + 1] = sin(2 * PI * rf_freqs * tau_beam);
+						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, max_n_beams)] = cos(2 * PI * rf_freqs * tau_beam);
+						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, max_n_beams) + 1] = sin(2 * PI * rf_freqs * tau_beam);
 					}
 					else if (n_pol == 2)
 					{
 						// X polarization
-						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, n_beam)] = cos(2 * PI * rf_freqs * tau_beam);
-						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, n_beam) + 1] = sin(2 * PI * rf_freqs * tau_beam);
+						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, max_n_beams)] = cos(2 * PI * rf_freqs * tau_beam);
+						coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, max_n_beams) + 1] = sin(2 * PI * rf_freqs * tau_beam);
 						// Y polarization
-						coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, n_beam)] = cos(2 * PI * rf_freqs * tau_beam);
-						coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, n_beam) + 1] = sin(2 * PI * rf_freqs * tau_beam);
+						coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, max_n_beams)] = cos(2 * PI * rf_freqs * tau_beam);
+						coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, max_n_beams) + 1] = sin(2 * PI * rf_freqs * tau_beam);
 
 						if (a == 0 || a == 1 || a == nants - 1)
 						{
@@ -1705,10 +1705,10 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 								printf("COEFF_SIM: tau[beam idx = %d] = %f ns\n", b, tau_beam);
 								printf("COEFF_SIM: rf_freqs[%d] = %lf GHz\n", f, rf_freqs);
 								printf("\n");
-								printf("COEFF_SIM: coeff_sim_r[x] = %f\n", coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, n_beam)]);
-								printf("COEFF_SIM: coeff_sim_i[x] = %f\n", coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, n_beam)+1]);
-								printf("COEFF_SIM: coeff_sim_r[y] = %f\n", coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, n_beam)]);
-								printf("COEFF_SIM: coeff_sim_i[y] = %f\n", coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, n_beam)+1]);
+								printf("COEFF_SIM: coeff_sim_r[x] = %f\n", coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, max_n_beams)]);
+								printf("COEFF_SIM: coeff_sim_i[x] = %f\n", coeff_sim[2 * coeff_idx(a, 0, b, f, nants, n_pol, max_n_beams) + 1]);
+								printf("COEFF_SIM: coeff_sim_r[y] = %f\n", coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, max_n_beams)]);
+								printf("COEFF_SIM: coeff_sim_i[y] = %f\n", coeff_sim[2 * coeff_idx(a, 1, b, f, nants, n_pol, max_n_beams) + 1]);
 								printf("\n");
 							}
 						}
@@ -1723,7 +1723,7 @@ float *simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam
 		{
 			for (int f = 0; f < n_chan; f++)
 			{
-				coeff_sim[2 * coeff_idx(a, 0, 2, f, nants, n_pol, n_beam)] = 1;
+				coeff_sim[2 * coeff_idx(a, 0, 2, f, nants, n_pol, max_n_beams)] = 1;
 			}
 		}
 	}

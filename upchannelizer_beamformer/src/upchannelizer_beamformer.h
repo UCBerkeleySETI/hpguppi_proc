@@ -94,7 +94,7 @@ extern "C" {
 void init_upchan_beamformer(int telescope_flag); // Allocate memory to all arrays 
 void set_to_zero_ubf(int telescope_flag); // Set arrays to zero after a block is processed
 signed char* simulate_data_ubf(int n_sim_ant, int nants, int n_pol, int n_chan, int nt, int n_win, int sim_flag, int telescope_flag, float rect_zero_samps, float freq_band_shift, int filenum, int num_files);
-float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int n_beam, int n_chan, int sim_flag, int telescope_flag);
+float* simulate_coefficients_ubf(int n_sim_ant, int nants, int n_pol, int max_n_beams, int actual_n_beams, int n_chan, int sim_flag, int telescope_flag);
 float* generate_coefficients_ubf(complex_t* phase_up, double* delay, int n, double* coarse_chan, int n_ant_config, int n_pol, int n_beam, int actual_n_beam, int schan, int n_coarse, int subband_idx, uint64_t n_real_ant, int telescope_flag);
 void input_data_pin(signed char * data_in_pin, int telescope_flag);
 //void output_data_pin(float * data_out_pin);
